@@ -6,7 +6,7 @@ From-scratch implementations of modern ML architectures. Built step-by-step with
 
 | Model | Description | Demo | Documentation |
 |-------|-------------|------|---------------|
-| **[JEPA World Model](./JEPA)** | Action-conditional Joint Embedding Predictive Architecture with VICReg regularization. Learns collapse-resistant latents in a 2D grid world, predicts multi-step dynamics in embedding space, and plans via random-shooting MPC — all without a decoder or learned policy. | `python JEPA/scaffold.py` | [View Docs](docs/jepa.html) |
+| **[JEPA World Model](./JEPA)** | Action-conditional Joint Embedding Predictive Architecture with VICReg regularization. Learns collapse-resistant latents in a 2D grid world, predicts multi-step dynamics in embedding space, and plans via random-shooting MPC — all without a decoder or learned policy. | `python JEPA/scaffold.py` | [View Docs](./JEPA/README.md) |
 | *Model X* | *Coming soon* | — | — |
 | *Model Y* | *Coming soon* | — | — |
 | *Model Z* | *Coming soon* | — | — |
