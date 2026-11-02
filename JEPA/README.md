@@ -2,6 +2,15 @@
 
 Build an action-conditioned Joint Embedding Predictive Architecture (JEPA) world model in pure PyTorch. An encoder and EMA target learn collapse-resistant latents of a 2D room via VICReg, a predictor rolls dynamics in embedding space, and acting is random-shooting MPC toward goal embeddings. No decoder, no pixels, no learned policy.
 
+## Configuration (current run)
+
+- **Room**: 6×6, **transitions**: 512, **latent dim**: 16, **hidden**: 32
+- **Epochs**: 100 (12 steps/epoch = 1200 steps), **no early stopping**
+- **Batch**: 32, **lr**: 0.1, **EMA tau**: 0.99
+- **Horizon curriculum**: 5 → 10 → 15 → 20 every 30 epochs
+- **VICReg target**: collapse metric (mean latent std) → 1.0
+- **Results**: Probe MAE ≈ 0.37, MPC success 60%/90%/70% (h=5/10/20)
+
 ## File Structure
 
 | File | Steps | Description |
@@ -16,33 +25,38 @@ Build an action-conditioned Joint Embedding Predictive Architecture (JEPA) world
 | `planning.py` | 30–37 | Goal encoding, MPC planning, episode runner, planner evaluation |
 | `experiment.py` | 38 | Full end-to-end experiment |
 | `analysis.py` | — | Visualization: architecture, training curves, MPC, probes, pipeline |
-| `scaffold.py` | — | End-to-end demo (run this) |
 | `train.py` | — | Train JEPA, evaluate, save results to `results/` |
 | `visualize.py` | — | Generate all plots/GIFs from saved results |
 
 ## How to Run
 
 ```bash
-# Quick demo (runs in ~30s)
-python scaffold.py
-
-# Train, then generate all visualizations
+# Train JEPA (100 epochs, saves to results/jepa_results.pt)
 python train.py
+
+# Generate all visualizations from saved results
 python visualize.py
 ```
 
-### Expected Output (scaffold.py)
+### Expected Output (train.py + visualize.py)
 
 ```
-transitions: 512 | obs shape: (512, 1, 6, 6)
-collapse metric BEFORE training: 0.037  (near 0 = collapsed)
-JEPA loss: 0.963 -> 0.705
-collapse metric AFTER training:  1.073  (target std is 1.0)
-5-step latent prediction MSE (trained): 15.422
-linear probe on agent position: mean abs error = 0.30 cells (room is 6x6)
-MPC planner:   success 90%, mean final distance 0.20
-random policy: success 40%
+Epochs: 100 x 12 steps = 1200 steps total; no early stopping; val every 12 steps; horizon every 30 epochs
+Train loss: 0.963 -> 0.771
+Collapse: 0.037 -> 1.09
+Val loss: 0.956 -> 0.318 (best @ epoch 18)
+Test Probe MAE: 0.368
+MPC planner:   success 60% (h=5), 90% (h=10), 70% (h=20)
 ```
+
+Outputs in `JEPA/images/`:
+- `architecture.png` — U-shaped block diagram (PNG)
+- `training_curves.gif` — Animated loss + collapse (val points, horizon-shift markers at epochs 30/60/90)
+- `pipeline_animation.gif` — Full pipeline: room → encoder → predictor → probe
+- `mpc_trajectories.png` — 5 success + 5 failure MPC paths
+- `probe_accuracy.png` — Predicted vs actual position + error histogram
+
+See [documentation page](../docs/jepa.html) for embedded visualizations.
 
 ## Key Concepts
 
@@ -53,13 +67,13 @@ An untrained encoder maps all observations to nearly identical vectors (std ≈ 
 
 ### Architecture
 ```
-Observation (1,8,8) → Encoder → Latent z (32)
-                              ↓
+Observation (1,6,6) → Encoder → Latent z (16)
+                          ↓
 Action (0-3) → Embed → Concat → Predictor → Predicted z'
-                              ↑
-                        Next Obs → Target Encoder (EMA) → Target z'
-                              ↓
-                    JEPA Loss = MSE(pred, target) + VICReg(z)
+                          ↑
+                    Next Obs → Target Encoder (EMA) → Target z'
+                          ↓
+                JEPA Loss = MSE(pred, target) + VICReg(z)
 ```
 
 ### Acting = Planning in Latent Space
@@ -76,13 +90,13 @@ Run `python train.py` then `python visualize.py` to generate:
 
 | File | Description |
 |------|-------------|
-| `images/architecture.png` | Full model diagram (U-shaped block diagram) |
+| `images/architecture.png` | U-shaped block diagram (PNG) |
 | `images/training_curves.gif` | Animated loss + collapse (val points, horizon-shift markers) |
 | `images/pipeline_animation.gif` | Full pipeline: room → encoder → predictor → probe |
 | `images/mpc_trajectories.png` | 5 success + 5 failure MPC paths in 2D room |
 | `images/probe_accuracy.png` | Predicted vs actual position scatter + error histogram |
 
-See [documentation page](docs/jepa.html) for embedded visualizations.
+See [documentation page](../docs/jepa.html) for embedded visualizations.
 
 ## Dependencies
 
@@ -90,7 +104,6 @@ See [documentation page](docs/jepa.html) for embedded visualizations.
 - `matplotlib` (visualizations)
 - `seaborn` (visualizations)
 - `imageio` (animated GIFs)
-- `graphviz` (optional, for architecture diagram)
 
 ## References
 

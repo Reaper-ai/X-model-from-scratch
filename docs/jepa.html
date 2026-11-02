@@ -211,7 +211,7 @@
       <div class="figure">
         <div class="figure-header">
           <h3 class="figure-title">Figure 2: Training Curves (Animated)</h3>
-          <p class="figure-caption">Left: JEPA loss over steps (train + val). Purple dotted lines mark horizon curriculum shifts (h→5, h→10, h→15, h→20). Right: Collapse metric (mean std of latent dimensions) — target is γ=1.0 (green dashed line). An untrained encoder collapses (std ≈ 0), making prediction trivial but useless.</p>
+          <p class="figure-caption">Config: 100 epochs, batch 32, lr=0.1, no early stopping. Horizon curriculum: 5→10→15→20 every 30 epochs (purple dotted lines). Left: JEPA loss (train + val). Right: Collapse metric (mean latent std) targeting γ=1.0.</p>
         </div>
         <div class="figure-content gif-wrapper">
           <img src="../JEPA/images/training_curves.gif" alt="Training curves animation" loading="lazy">
@@ -226,7 +226,7 @@
       <div class="figure">
         <div class="figure-header">
           <h3 class="figure-title">Figure 3: MPC Trajectories</h3>
-          <p class="figure-caption">Top row: 5 successes. Bottom row: 5 failures. Start (green circle), Goal (red star), End (blue X = success, red X = failure) in a 6×6 room.</p>
+          <p class="figure-caption">Top row: 5 successes. Bottom row: 5 failures. Start (green circle), Goal (red star), End (blue X = success, red X = failure) in a 6×6 room. MPC success: 60% (h=5), 90% (h=10), 70% (h=20).</p>
         </div>
         <div class="figure-content">
           <img src="../JEPA/images/mpc_trajectories.png" alt="MPC trajectories" loading="lazy">
@@ -241,7 +241,7 @@
       <div class="figure">
         <div class="figure-header">
           <h3 class="figure-title">Figure 4: Probe Accuracy</h3>
-          <p class="figure-caption">Left: Predicted vs true X position. Center: Predicted vs true Y position. Right: Absolute error distribution. Diagonal = perfect prediction. MAE ≈ 0.3 cells in a 6×6 room.</p>
+          <p class="figure-caption">Left: Predicted vs true X position. Center: Predicted vs true Y position. Right: Absolute error distribution. Test MAE ≈ 0.37 cells in 6×6 room. Linear probe on frozen encoder confirms latents encode agent position.</p>
         </div>
         <div class="figure-content">
           <img src="../JEPA/images/probe_accuracy.png" alt="Probe accuracy" loading="lazy">
@@ -252,7 +252,7 @@
     <section class="section" id="usage">
       <h2 class="section-title">Usage</h2>
       <h2>Running the Code</h2>
-      <div class="code-block"><span class="comment"># Train JEPA, save metrics/params</span>
+      <div class="code-block"><span class="comment"># Train JEPA, save metrics/params (100 epochs, no early stop)</span>
 <span class="keyword">python</span> <span class="string">JEPA/train.py</span>
 
 <span class="comment"># Generate all visualizations from saved results</span>
@@ -296,7 +296,6 @@
           <h3>Analysis & Docs</h3>
           <ul>
             <li><code>analysis.py</code> — All visualizations</li>
-            <li><code>scaffold.py</code> — End-to-end demo</li>
             <li><code>train.py</code> / <code>visualize.py</code> — Train + generate plots</li>
             <li><code>images/</code> — Generated outputs</li>
           </ul>

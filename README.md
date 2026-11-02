@@ -6,7 +6,7 @@ From-scratch implementations of modern ML architectures. Built step-by-step with
 
 | Model | Description | Demo | Documentation |
 |-------|-------------|------|---------------|
-| **[JEPA World Model](./JEPA)** | Action-conditional Joint Embedding Predictive Architecture with VICReg regularization. Learns collapse-resistant latents in a 2D grid world, predicts multi-step dynamics in embedding space, and plans via random-shooting MPC — all without a decoder or learned policy. | `python JEPA/scaffold.py` | [View Docs](./JEPA/README.md) |
+| **[JEPA World Model](./JEPA)** | Action-conditional Joint Embedding Predictive Architecture with VICReg regularization. Learns collapse-resistant latents in a 2D grid world, predicts multi-step dynamics in embedding space, and plans via random-shooting MPC — all without a decoder or learned policy. | `python JEPA/train.py` | [View Docs](./JEPA/README.md) |
 | *Model X* | *Coming soon* | — | — |
 | *Model Y* | *Coming soon* | — | — |
 | *Model Z* | *Coming soon* | — | — |
@@ -30,7 +30,6 @@ X-model-from-scratch/
 │   ├── planning.py         # MPC in latent space
 │   ├── experiment.py       # Full experiment pipeline
 │   ├── analysis.py         # Visualization & plotting
-│   ├── scaffold.py         # End-to-end demo
 │   ├── train.py            # Train + save metrics/params
 │   └── visualize.py        # Generate all plots from saved results
 ├── docs/
@@ -45,11 +44,10 @@ X-model-from-scratch/
 # Install dependencies (project venv)
 uv sync
 
-# Run JEPA demo
-python JEPA/scaffold.py
-
-# Train JEPA, then generate visualizations
+# Train JEPA (100 epochs), save metrics/params
 python JEPA/train.py
+
+# Generate all visualizations from saved results
 python JEPA/visualize.py
 ```
 
