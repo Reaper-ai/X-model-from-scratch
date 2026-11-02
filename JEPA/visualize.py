@@ -53,7 +53,7 @@ def main():
         room_size=room_size,
         hidden_dim=cfg.get("hidden_dim", 32),
         steps_per_epoch=steps_per_epoch,
-        output_dir="images",
+        output_dir="../docs/images",
     )
     print("=== Done! ===")
 
