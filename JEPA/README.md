@@ -76,7 +76,7 @@ Run `python train.py` then `python visualize.py` to generate:
 
 | File | Description |
 |------|-------------|
-| `images/architecture.svg` | Full model diagram (torchviz) |
+| `images/architecture.png` | Full model diagram (U-shaped block diagram) |
 | `images/training_curves.gif` | Animated loss + collapse (val points, horizon-shift markers) |
 | `images/pipeline_animation.gif` | Full pipeline: room → encoder → predictor → probe |
 | `images/mpc_trajectories.png` | 5 success + 5 failure MPC paths in 2D room |

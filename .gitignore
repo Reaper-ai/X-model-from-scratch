@@ -6,4 +6,4 @@ __pycache__/
 uv.lock
 .python-version
 data_cache/
-JEPA/images/jepa_torchviz
+JEPA/results/

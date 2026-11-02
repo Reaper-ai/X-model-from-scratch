@@ -23,9 +23,9 @@ CONFIG = {
     "eval_horizons": [5, 10, 20],
     "device": "cuda" if torch.cuda.is_available() else "cpu",
     "num_transitions": 512,       # cached on disk; big enough to converge, tiny in RAM
-    "max_epochs": 500,            # 1 epoch = one pass over train set
-    "patience_epochs": 50,        # stop if no val improvement for 50 epochs
-    "val_every_epochs": 1,        # validate once per epoch
+    "max_epochs": 100,           # fixed length (no early stopping)
+    "val_every_epochs": 1,       # validate once per epoch
+    "horizon_every_epochs": 30,  # advance curriculum horizon every 30 epochs
     "batch_size": 32,
     "lr": 0.1,
     "tau": 0.99,
@@ -87,11 +87,11 @@ def main():
     train_n = train_dataset["observations"].shape[0]
     steps_per_epoch = max(1, -(-train_n // cfg["batch_size"]))  # ceil division
     max_steps = cfg["max_epochs"] * steps_per_epoch
-    patience = cfg["patience_epochs"] * steps_per_epoch
     val_every = cfg["val_every_epochs"] * steps_per_epoch
     print(f"Epochs: {cfg['max_epochs']} x {steps_per_epoch} steps = {max_steps} steps total; "
-          f"patience = {cfg['patience_epochs']} epochs ({patience} steps); "
-          f"val every {val_every} steps")
+          f"no early stopping; "
+          f"val every {val_every} steps; "
+          f"horizon every {cfg['horizon_every_epochs']} epochs")
 
     print("=== Training JEPA ===")
     encoder_params, target_params, predictor_params, history = train_jepa(
@@ -106,9 +106,11 @@ def main():
         seed=cfg["seed"],
         curriculum=True,
         max_horizon=cfg["max_horizon"],
+        steps_per_epoch=steps_per_epoch,
+        horizon_every_epochs=cfg["horizon_every_epochs"],
         val_dataset=val_dataset,
         val_every=val_every,
-        patience=patience,
+        patience=None,  # early stopping disabled
     )
     print(f"Steps run: {len(history)} ({len(history) / steps_per_epoch:.1f} epochs)")
     print(f"Train loss: {history[0]['train_loss']:.4f} -> {history[-1]['train_loss']:.4f}")

@@ -39,6 +39,10 @@ def main():
         device=DEVICE,
     )
 
+    # 1 epoch = ceil(train_n / batch_size) steps (same formula as train.py)
+    train_n = int(len(full_dataset["observations"]) * cfg["train_ratio"])
+    steps_per_epoch = max(1, -(-train_n // cfg["batch_size"]))
+
     generate_all_visualizations(
         dataset=full_dataset,
         encoder_params=encoder_params,
@@ -48,6 +52,7 @@ def main():
         history=history,
         room_size=room_size,
         hidden_dim=cfg.get("hidden_dim", 32),
+        steps_per_epoch=steps_per_epoch,
         output_dir="images",
     )
     print("=== Done! ===")

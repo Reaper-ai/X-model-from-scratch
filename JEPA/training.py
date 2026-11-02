@@ -133,9 +133,11 @@ def train_jepa(
     seed: int = 0,
     curriculum: bool = True,
     max_horizon: int = 20,
+    steps_per_epoch: int = 12,
+    horizon_every_epochs: int = 30,
     val_dataset: dict = None,
     val_every: int = 50,
-    patience: int = 50
+    patience: int | None = None
 ) -> tuple[dict, dict, dict, list]:
     """
     Train JEPA with curriculum learning, validation tracking, and early stopping.
@@ -152,9 +154,11 @@ def train_jepa(
         seed: Random seed
         curriculum: If True, use progressive horizon curriculum
         max_horizon: Maximum horizon for curriculum (target)
+        steps_per_epoch: Steps in one epoch (for horizon schedule)
+        horizon_every_epochs: Advance horizon every N epochs
         val_dataset: Validation dataset (on device) for early stopping
         val_every: Evaluate val loss every N steps
-        patience: Stop if no val improvement for this many training steps
+        patience: Stop if no val improvement for this many training steps (None = no early stop)
     
     Returns:
         Updated encoder, target, predictor, and history with metrics
@@ -167,16 +171,21 @@ def train_jepa(
     pred = predictor_params
     history = []
     
-    # Dynamic curriculum based on max_horizon
+    # Curriculum: advance horizon every `horizon_every_epochs` epochs
     if curriculum:
-        # 5 phases: 1 -> max_horizon//4 -> max_horizon//2 -> 3*max_horizon//4 -> max_horizon
-        h1 = 1
-        h2 = max(2, max_horizon // 4)
-        h3 = max(h2 + 1, max_horizon // 2)
-        h4 = max(h3 + 1, 3 * max_horizon // 4)
-        h5 = max_horizon
-        phase_len = num_steps // 5
-        horizon_schedule = [h1] * phase_len + [h2] * phase_len + [h3] * phase_len + [h4] * phase_len + [h5] * (num_steps - 4 * phase_len)
+        # 4 phases starting at 5: 5 -> 10 -> 15 -> 20 (no h=1)
+        phases = [5, 10, 15, 20]
+        phase_len = max(1, horizon_every_epochs * steps_per_epoch)
+        horizon_schedule = []
+        for phase in phases:
+            horizon_schedule.extend([phase] * phase_len)
+        # Pad or trim to num_steps
+        if len(horizon_schedule) < num_steps:
+            horizon_schedule.extend([phases[-1]] * (num_steps - len(horizon_schedule)))
+        horizon_schedule = horizon_schedule[:num_steps]
+        print(f"Horizon curriculum: phases {phases}, every {horizon_every_epochs} epochs "
+              f"({phase_len} steps); shifts at steps "
+              f"{[phase_len * k for k in range(1, len(phases))]}")
     else:
         horizon_schedule = [max_horizon] * num_steps
 
@@ -214,7 +223,7 @@ def train_jepa(
                 best_val_loss = val_loss
                 last_improve_step = i
             
-            if i - last_improve_step >= patience:
+            if patience is not None and i - last_improve_step >= patience:
                 early_stopped = True
                 entry["early_stopped"] = True
                 print(f"Early stopping at step {i} (no val improvement for {patience} steps; "
