@@ -6,38 +6,36 @@
   <title>X-Model-From-Scratch — From-Scratch ML Implementations</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #09090b;
-      --surface: #18181b;
-      --surface-alt: #27272a;
-      --border: #27272a;
-      --text: #fafafa;
-      --text-muted: #a1a1a6;
-      --accent: #fafafa;
-    }
-  }
-  :root {
-    --bg: #ffffff;
-    --surface: #fafafa;
-    --surface-alt: #f4f4f5;
-    --border: #e4e4e7;
-    --text: #18181b;
-    --text-muted: #71717a;
-    --accent: #18181b;
-    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-    --sans: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-    scroll-behavior: smooth;
-  }
+:root {
+     --bg: #ffffff;
+     --surface: #fafafa;
+     --surface-alt: #f4f4f5;
+     --border: #e4e4e7;
+     --text: #18181b;
+     --text-muted: #71717a;
+     --accent: #18181b;
+     --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+     --sans: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+   }
+   :root.dark {
+     --bg: #09090b;
+     --surface: #18181b;
+     --surface-alt: #27272a;
+     --border: #27272a;
+     --text: #fafafa;
+     --text-muted: #a1a1a6;
+     --accent: #fafafa;
+   }
+   * { box-sizing: border-box; }
+   html, body { margin: 0; padding: 0; }
+   body {
+     background: var(--bg);
+     color: var(--text);
+     font-family: var(--sans);
+     line-height: 1.6;
+     -webkit-font-smoothing: antialiased;
+     scroll-behavior: smooth;
+   }
 
   .theme-toggle {
     position: fixed;
@@ -344,15 +342,15 @@
   <script>
     function toggleTheme() {
       const html = document.documentElement;
-      const isDark = html.style.colorScheme === 'dark';
-      html.style.colorScheme = isDark ? 'light' : 'dark';
-      localStorage.setItem('theme', isDark ? 'light' : 'dark');
+      const isDark = html.classList.toggle('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
     }
     function initTheme() {
       const saved = localStorage.getItem('theme');
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       const isDark = saved === 'dark' || (saved === null && prefersDark);
-      document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+      if (isDark) html.classList.add('dark');
+      else html.classList.remove('dark');
     }
     initTheme();
   </script>
