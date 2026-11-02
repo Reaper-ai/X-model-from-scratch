@@ -197,7 +197,7 @@
           <p class="figure-caption">Observation → Encoder → Latent z. Action → Embed → Concat with z → Predictor → Predicted z'. Next observation → Target Encoder (EMA) → Target z'. JEPA Loss = MSE(pred, target) + Variance(z) + Covariance(z).</p>
         </div>
         <div class="figure-content">
-          <img src="images/architecture.png" alt="JEPA Architecture Diagram" loading="lazy">
+          <img src="./images/architecture.png" alt="JEPA Architecture Diagram" loading="lazy">
         </div>
       </div>
     </section>
@@ -212,7 +212,7 @@
           <p class="figure-caption">Config: 100 epochs, batch 32, lr=0.1, no early stopping. Horizon curriculum: 5→10→15→20 every 30 epochs (purple dotted lines). Left: JEPA loss (train + val). Right: Collapse metric (mean latent std) targeting γ=1.0.</p>
         </div>
         <div class="figure-content gif-wrapper">
-          <img src="images/training_curves.gif" alt="Training curves animation" loading="lazy">
+          <img src="./images/training_curves.gif" alt="Training curves animation" loading="lazy">
         </div>
       </div>
     </section>
@@ -227,7 +227,7 @@
           <p class="figure-caption">Top row: 5 successes. Bottom row: 5 failures. Start (green circle), Goal (red star), End (blue X = success, red X = failure) in a 6×6 room. MPC success: 60% (h=5), 90% (h=10), 70% (h=20).</p>
         </div>
         <div class="figure-content">
-          <img src="images/mpc_trajectories.png" alt="MPC trajectories" loading="lazy">
+          <img src="./images/mpc_trajectories.png" alt="MPC trajectories" loading="lazy">
         </div>
       </div>
     </section>
@@ -242,7 +242,7 @@
           <p class="figure-caption">Left: Predicted vs true X position. Center: Predicted vs true Y position. Right: Absolute error distribution. Test MAE ≈ 0.37 cells in 6×6 room. Linear probe on frozen encoder confirms latents encode agent position.</p>
         </div>
         <div class="figure-content">
-          <img src="images/probe_accuracy.png" alt="Probe accuracy" loading="lazy">
+          <img src="./images/probe_accuracy.png" alt="Probe accuracy" loading="lazy">
         </div>
       </div>
     </section>

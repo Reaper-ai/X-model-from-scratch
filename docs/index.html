@@ -349,6 +349,7 @@
       const saved = localStorage.getItem('theme');
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       const isDark = saved === 'dark' || (saved === null && prefersDark);
+      const html = document.documentElement;
       if (isDark) html.classList.add('dark');
       else html.classList.remove('dark');
     }
