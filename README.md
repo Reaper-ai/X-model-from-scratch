@@ -31,7 +31,8 @@ X-model-from-scratch/
 │   ├── experiment.py       # Full experiment pipeline
 │   ├── analysis.py         # Visualization & plotting
 │   ├── scaffold.py         # End-to-end demo
-│   └── test_visualizations.py  # Generate all plots
+│   ├── train.py            # Train + save metrics/params
+│   └── visualize.py        # Generate all plots from saved results
 ├── docs/
 │   ├── index.html          # Model gallery (cards)
 │   └── jepa.html           # JEPA deep-dive with visualizations
@@ -41,14 +42,15 @@ X-model-from-scratch/
 ## Quick Start
 
 ```bash
-# Install dependencies
-pip install torch matplotlib seaborn imageio graphviz
+# Install dependencies (project venv)
+uv sync
 
 # Run JEPA demo
 python JEPA/scaffold.py
 
-# Generate JEPA visualizations
-python JEPA/test_visualizations.py
+# Train JEPA, then generate visualizations
+python JEPA/train.py
+python JEPA/visualize.py
 ```
 
 ## JEPA Highlights

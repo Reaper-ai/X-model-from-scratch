@@ -72,17 +72,18 @@ def multi_step_prediction_error(
     return error.item()
 
 
-def init_linear_probe(latent_dim: int = 32, state_dim: int = 2, seed: int = 0) -> dict:
+def init_linear_probe(latent_dim: int = 32, state_dim: int = 2, seed: int = 0, device: str = 'cpu') -> dict:
     torch.manual_seed(seed)
     probe = {}
-    probe["w"] = torch.randn(state_dim, latent_dim) * 0.01
-    probe["b"] = torch.zeros(state_dim)
+    probe["w"] = torch.randn(state_dim, latent_dim, device=device) * 0.01
+    probe["b"] = torch.zeros(state_dim, device=device)
 
     return probe
 
 
 def train_linear_probe(embeddings: torch.Tensor, states: torch.Tensor, probe_params: dict, num_steps: int = 100, lr: float = 1e-2) -> dict:
     embeddings = embeddings.detach()
+    device = embeddings.device
 
     w = probe_params['w'].clone().detach().requires_grad_(True)
     b = probe_params['b'].clone().detach().requires_grad_(True)
@@ -106,8 +107,9 @@ def probe_state_recovery(dataset: dict, encoder_params: dict, probe_params: dict
 
     embedding = encode_batch(obs, encoder_params)
     D = embedding.shape[1]
+    device = embedding.device
     if probe_params is None:
-        probe_params = init_linear_probe(latent_dim=D, state_dim=states.shape[-1], seed=0)
+        probe_params = init_linear_probe(latent_dim=D, state_dim=states.shape[-1], seed=0, device=device)
 
     probe_params = train_linear_probe(embedding, states, probe_params, num_probe_steps)
 

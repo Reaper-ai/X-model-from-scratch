@@ -15,9 +15,10 @@ Build an action-conditioned Joint Embedding Predictive Architecture (JEPA) world
 | `evaluation.py` | 25–29 | Latent rollouts, multi-step error, linear probe |
 | `planning.py` | 30–37 | Goal encoding, MPC planning, episode runner, planner evaluation |
 | `experiment.py` | 38 | Full end-to-end experiment |
-| `analysis.py` | — | Visualization: architecture, training curves, predictions, MPC, probes |
+| `analysis.py` | — | Visualization: architecture, training curves, MPC, probes, pipeline |
 | `scaffold.py` | — | End-to-end demo (run this) |
-| `test_visualizations.py` | — | Generate all plots for documentation |
+| `train.py` | — | Train JEPA, evaluate, save results to `results/` |
+| `visualize.py` | — | Generate all plots/GIFs from saved results |
 
 ## How to Run
 
@@ -25,8 +26,9 @@ Build an action-conditioned Joint Embedding Predictive Architecture (JEPA) world
 # Quick demo (runs in ~30s)
 python scaffold.py
 
-# Generate all visualizations (runs in ~2-3 min)
-python test_visualizations.py
+# Train, then generate all visualizations
+python train.py
+python visualize.py
 ```
 
 ### Expected Output (scaffold.py)
@@ -70,14 +72,14 @@ No policy network. Instead:
 
 ## Visualizations
 
-Run `python test_visualizations.py` to generate:
+Run `python train.py` then `python visualize.py` to generate:
 
 | File | Description |
 |------|-------------|
-| `images/architecture.png` | Full model diagram |
-| `images/training_curves.gif` | Animated loss + collapse over epochs |
-| `images/prediction_comparison.png` | 3-panel: GT obs \| Pred latent \| Target latent |
-| `images/mpc_trajectories.png` | Agent paths in 2D room (green=success) |
+| `images/architecture.svg` | Full model diagram (torchviz) |
+| `images/training_curves.gif` | Animated loss + collapse (val points, horizon-shift markers) |
+| `images/pipeline_animation.gif` | Full pipeline: room → encoder → predictor → probe |
+| `images/mpc_trajectories.png` | 5 success + 5 failure MPC paths in 2D room |
 | `images/probe_accuracy.png` | Predicted vs actual position scatter + error histogram |
 
 See [documentation page](docs/jepa.html) for embedded visualizations.

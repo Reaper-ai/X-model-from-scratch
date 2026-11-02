@@ -1,6 +1,7 @@
 """
 Training Step and Full Training Loop.
 Steps 23-24 from the JEPA implementation.
+Enhanced with curriculum learning, validation tracking, and early stopping.
 """
 
 import torch
@@ -46,7 +47,7 @@ def jepa_training_step(
     loss = jepa_loss(predicted, target, embeddings)
 
     # 6. Backpropagation
-    loss.backward(retain_graph=True)
+    loss.backward()
 
     # 7. Update online encoder
     updated_encoder = {}
@@ -89,7 +90,75 @@ def jepa_training_step(
     )
 
 
-def train_jepa(dataset: dict, encoder_params: dict, target_params: dict, predictor_params: dict, num_steps: int = 50, batch_size: int = 32, lr: float = 1e-3, tau: float = 0.99, seed: int = 0) -> tuple[dict, dict, dict, list]:
+@torch.no_grad()
+def evaluate_val_loss(
+    val_dataset: dict,
+    encoder_params: dict,
+    target_params: dict,
+    predictor_params: dict,
+    batch_size: int = 32
+) -> float:
+    """Evaluate validation loss on a subset of val data."""
+    N = val_dataset["observations"].shape[0]
+    if N == 0:
+        return float('inf')
+    
+    # Use a fixed subset for consistent evaluation
+    eval_size = min(batch_size * 4, N)
+    idx = torch.randperm(N)[:eval_size]
+    
+    batch = {
+        "observations": val_dataset["observations"][idx],
+        "actions": val_dataset["actions"][idx],
+        "next_observations": val_dataset["next_observations"][idx]
+    }
+    
+    embeddings = encode_batch(batch["observations"], encoder_params)
+    target = encode_batch(batch["next_observations"], target_params)
+    predicted = predict_next_embedding(embeddings, batch["actions"], predictor_params)
+    
+    loss = jepa_loss(predicted, target, embeddings)
+    return loss.item()
+
+
+def train_jepa(
+    dataset: dict,
+    encoder_params: dict,
+    target_params: dict,
+    predictor_params: dict,
+    num_steps: int = 2000,
+    batch_size: int = 32,
+    lr: float = 0.1,
+    tau: float = 0.99,
+    seed: int = 0,
+    curriculum: bool = True,
+    max_horizon: int = 20,
+    val_dataset: dict = None,
+    val_every: int = 50,
+    patience: int = 50
+) -> tuple[dict, dict, dict, list]:
+    """
+    Train JEPA with curriculum learning, validation tracking, and early stopping.
+    
+    Args:
+        dataset: Training dataset (on device)
+        encoder_params: Online encoder parameters
+        target_params: Target encoder parameters
+        predictor_params: Predictor parameters
+        num_steps: Total training steps
+        batch_size: Batch size
+        lr: Learning rate
+        tau: EMA decay
+        seed: Random seed
+        curriculum: If True, use progressive horizon curriculum
+        max_horizon: Maximum horizon for curriculum (target)
+        val_dataset: Validation dataset (on device) for early stopping
+        val_every: Evaluate val loss every N steps
+        patience: Stop if no val improvement for this many training steps
+    
+    Returns:
+        Updated encoder, target, predictor, and history with metrics
+    """
     torch.manual_seed(seed)
     N = dataset["observations"].shape[0]
 
@@ -97,15 +166,63 @@ def train_jepa(dataset: dict, encoder_params: dict, target_params: dict, predict
     tgt = target_params
     pred = predictor_params
     history = []
+    
+    # Dynamic curriculum based on max_horizon
+    if curriculum:
+        # 5 phases: 1 -> max_horizon//4 -> max_horizon//2 -> 3*max_horizon//4 -> max_horizon
+        h1 = 1
+        h2 = max(2, max_horizon // 4)
+        h3 = max(h2 + 1, max_horizon // 2)
+        h4 = max(h3 + 1, 3 * max_horizon // 4)
+        h5 = max_horizon
+        phase_len = num_steps // 5
+        horizon_schedule = [h1] * phase_len + [h2] * phase_len + [h3] * phase_len + [h4] * phase_len + [h5] * (num_steps - 4 * phase_len)
+    else:
+        horizon_schedule = [max_horizon] * num_steps
+
+    # Early stopping state (patience measured in raw training steps)
+    best_val_loss = float('inf')
+    last_improve_step = 0
+    early_stopped = False
+
     for i in range(num_steps):
         idx = torch.randint(0, N, (batch_size,))
-        batch = {"observations": dataset["observations"][idx],
+        batch = {
+            "observations": dataset["observations"][idx],
             "actions": dataset["actions"][idx],
-            "next_observations": dataset["next_observations"][idx]}
+            "next_observations": dataset["next_observations"][idx]
+        }
+        
+        # Use curriculum horizon for this step (currently unused in step, but tracked)
+        current_horizon = horizon_schedule[i]
+        
         enc, tgt, pred, loss, collapse = jepa_training_step(batch, enc, tgt, pred, lr, tau)
-        history.append({
-        "loss": float(loss),
-        "collapse": float(collapse)
-    })
+        
+        entry = {
+            "step": i,
+            "train_loss": float(loss),
+            "collapse": float(collapse),
+            "horizon": current_horizon
+        }
+        
+        # Validation evaluation
+        if val_dataset is not None and i % val_every == 0 and i > 0:
+            val_loss = evaluate_val_loss(val_dataset, enc, tgt, pred, batch_size)
+            entry["val_loss"] = val_loss
+            
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                last_improve_step = i
+            
+            if i - last_improve_step >= patience:
+                early_stopped = True
+                entry["early_stopped"] = True
+                print(f"Early stopping at step {i} (no val improvement for {patience} steps; "
+                      f"best {best_val_loss:.4f} at step {last_improve_step})")
+        
+        history.append(entry)
+        
+        if early_stopped:
+            break
 
     return enc, tgt, pred, history

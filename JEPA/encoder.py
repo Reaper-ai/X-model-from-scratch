@@ -7,22 +7,22 @@ import torch
 import torch.nn.functional as F
 
 
-def init_encoder_params(obs_channels: int = 1, room_size: int = 8, latent_dim: int = 32, seed: int = 0) -> dict:
+def init_encoder_params(obs_channels: int = 1, room_size: int = 8, latent_dim: int = 32, seed: int = 0, device: str = 'cpu') -> dict:
     torch.manual_seed(seed)
 
     params = {}
 
-    params['conv1_w'] = torch.randn(16, obs_channels, 3, 3) * 0.1
-    params['conv1_b'] = torch.zeros(16)
+    params['conv1_w'] = torch.randn(16, obs_channels, 3, 3, device=device) * 0.1
+    params['conv1_b'] = torch.zeros(16, device=device)
 
-    params['conv2_w'] = torch.randn(32, 16, 3, 3) * 0.1
-    params['conv2_b'] = torch.zeros(32)
+    params['conv2_w'] = torch.randn(32, 16, 3, 3, device=device) * 0.1
+    params['conv2_b'] = torch.zeros(32, device=device)
 
     conv2_out_size = room_size // 2
     flattened_size = 32 * conv2_out_size * conv2_out_size
 
-    params['fc_w'] = torch.randn(latent_dim, flattened_size) * 0.1
-    params['fc_b'] = torch.zeros(latent_dim)
+    params['fc_w'] = torch.randn(latent_dim, flattened_size, device=device) * 0.1
+    params['fc_b'] = torch.zeros(latent_dim, device=device)
 
     for k in params:
         params[k].requires_grad = True
@@ -62,3 +62,8 @@ def ema_update(target_params: dict, encoder_params: dict, tau: float = 0.99) -> 
 
 def encode_batch(obs: torch.Tensor, encoder_params: dict) -> torch.Tensor:
     return encoder_forward(obs, encoder_params)
+
+
+def move_params_to_device(params: dict, device: str) -> dict:
+    """Move all parameters in dict to specified device."""
+    return {k: v.to(device) for k, v in params.items()}

@@ -13,7 +13,7 @@ from evaluation import rollout_latent_dynamics
 
 def encode_goal(goal_state: torch.Tensor, encoder_params: dict, room_size: int = 8) -> torch.Tensor:
     image = render_observation(goal_state, room_size)
-    image = image.unsqueeze(0)
+    image = image.unsqueeze(0).to(next(iter(encoder_params.values())).device)
     embedding = encode_batch(image, encoder_params)
     embedding = embedding.squeeze(0)
     return embedding
@@ -24,8 +24,8 @@ def latent_cost(latents, goal_embedding):
     return diff
 
 
-def sample_action_sequences(n_sequences, horizon, n_actions):
-    return torch.randint(0, n_actions, (n_sequences, horizon))
+def sample_action_sequences(n_sequences, horizon, n_actions, device='cpu'):
+    return torch.randint(0, n_actions, (n_sequences, horizon), device=device)
 
 
 def score_action_sequences(start_embedding, action_sequences, goal_embedding, predictor_params):
@@ -55,7 +55,8 @@ def select_best_plan(action_sequences, costs):
 
 
 def mpc_step(start_embedding, goal_embedding, predictor_params, n_sequences, horizon, n_actions):
-    action_seq = sample_action_sequences(n_sequences, horizon, n_actions)
+    device = start_embedding.device
+    action_seq = sample_action_sequences(n_sequences, horizon, n_actions, device=device)
     costs = score_action_sequences(start_embedding, action_seq, goal_embedding, predictor_params)
     best_plan = select_best_plan(action_seq, costs)
     return best_plan[0].item()
@@ -80,7 +81,7 @@ def run_mpc_episode(encoder_params, predictor_params, goal_pos, room_size, agent
             success = True
             break
 
-        start_embedding = encode_batch(obs.unsqueeze(0), encoder_params).squeeze(0)
+        start_embedding = encode_batch(obs.unsqueeze(0).to(next(iter(encoder_params.values())).device), encoder_params).squeeze(0)
         action = mpc_step(start_embedding, goal_embedding, predictor_params, n_sequences, horizon, n_actions)
 
         state, obs = env_step(state, action, room_size=room_size)

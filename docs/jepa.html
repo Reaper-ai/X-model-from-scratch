@@ -199,7 +199,7 @@
           <p class="figure-caption">Observation → Encoder → Latent z. Action → Embed → Concat with z → Predictor → Predicted z'. Next observation → Target Encoder (EMA) → Target z'. JEPA Loss = MSE(pred, target) + Variance(z) + Covariance(z).</p>
         </div>
         <div class="figure-content">
-          <img src="../JEPA/images/architecture.png" alt="JEPA Architecture Diagram" loading="lazy">
+          <img src="../JEPA/images/architecture.svg" alt="JEPA Architecture Diagram" loading="lazy">
         </div>
       </div>
     </section>
@@ -207,29 +207,14 @@
     <section class="section" id="training">
       <h2 class="section-title">Training Dynamics</h2>
       <h2>Loss & Collapse Metric</h2>
-      <p>Animated training curves showing JEPA loss decreasing and collapse metric (mean latent std) rising from near-zero to the target of 1.0, indicating successful VICReg regularization.</p>
+      <p>Animated training curves showing JEPA loss decreasing and collapse metric (mean latent std) rising from near-zero to the target of 1.0, indicating successful VICReg regularization. Validation checks are marked as points; curriculum horizon shifts are annotated with vertical lines.</p>
       <div class="figure">
         <div class="figure-header">
           <h3 class="figure-title">Figure 2: Training Curves (Animated)</h3>
-          <p class="figure-caption">Left: JEPA loss over epochs. Right: Collapse metric (mean std of latent dimensions) — target is γ=1.0 (green dashed line). An untrained encoder collapses (std ≈ 0), making prediction trivial but useless.</p>
+          <p class="figure-caption">Left: JEPA loss over steps (train + val). Purple dotted lines mark horizon curriculum shifts (h→5, h→10, h→15, h→20). Right: Collapse metric (mean std of latent dimensions) — target is γ=1.0 (green dashed line). An untrained encoder collapses (std ≈ 0), making prediction trivial but useless.</p>
         </div>
         <div class="figure-content gif-wrapper">
           <img src="../JEPA/images/training_curves.gif" alt="Training curves animation" loading="lazy">
-        </div>
-      </div>
-    </section>
-
-    <section class="section" id="predictions">
-      <h2 class="section-title">Latent Predictions</h2>
-      <h2>Multi-Step Prediction Comparison</h2>
-      <p>Three-panel comparison for horizon=5: Ground truth observations (left), predicted latent embeddings (center), and target encoder embeddings of actual next observations (right). The predictor learns to forecast latent dynamics that align with the EMA target.</p>
-      <div class="figure">
-        <div class="figure-header">
-          <h3 class="figure-title">Figure 3: Prediction Comparison Grid</h3>
-          <p class="figure-caption">Each row shows one sample rolled out for 5 steps. Left column: 8×8 ground truth grid (agent position). Center: Predicted 32-dim latent (heatmap). Right: Target 32-dim latent from EMA encoder. Close alignment indicates accurate latent dynamics.</p>
-        </div>
-        <div class="figure-content">
-          <img src="../JEPA/images/prediction_comparison.png" alt="Prediction comparison grid" loading="lazy">
         </div>
       </div>
     </section>
@@ -240,8 +225,8 @@
       <p>Random-shooting MPC plans in latent space: sample 64 action sequences, roll out each with the predictor, score by distance to goal embedding, execute first action of best sequence. Green = success, Red = failure.</p>
       <div class="figure">
         <div class="figure-header">
-          <h3 class="figure-title">Figure 4: MPC Trajectories</h3>
-          <p class="figure-caption">10 episodes in an 8×8 room. Start (green circle), Goal (red star), End (blue X = success, red X = failure). The planner achieves ~90% success rate vs 40% for random policy.</p>
+          <h3 class="figure-title">Figure 3: MPC Trajectories</h3>
+          <p class="figure-caption">Top row: 5 successes. Bottom row: 5 failures. Start (green circle), Goal (red star), End (blue X = success, red X = failure) in a 6×6 room.</p>
         </div>
         <div class="figure-content">
           <img src="../JEPA/images/mpc_trajectories.png" alt="MPC trajectories" loading="lazy">
@@ -252,10 +237,10 @@
     <section class="section" id="probe">
       <h2 class="section-title">Linear Probe</h2>
       <h2>Latent → State Recovery</h2>
-      <p>A linear probe trained on frozen encoder outputs recovers the agent's (x, y) position from the 32-dim latent. Low MAE confirms the encoder captures true state information without a decoder.</p>
+      <p>A linear probe trained on frozen encoder outputs recovers the agent's (x, y) position from the latent. Low MAE confirms the encoder captures true state information without a decoder.</p>
       <div class="figure">
         <div class="figure-header">
-          <h3 class="figure-title">Figure 5: Probe Accuracy</h3>
+          <h3 class="figure-title">Figure 4: Probe Accuracy</h3>
           <p class="figure-caption">Left: Predicted vs true X position. Center: Predicted vs true Y position. Right: Absolute error distribution. Diagonal = perfect prediction. MAE ≈ 0.3 cells in a 6×6 room.</p>
         </div>
         <div class="figure-content">
@@ -267,11 +252,11 @@
     <section class="section" id="usage">
       <h2 class="section-title">Usage</h2>
       <h2>Running the Code</h2>
-      <div class="code-block"><span class="comment"># Quick demo (30s)</span>
-<span class="keyword">python</span> <span class="string">JEPA/scaffold.py</span>
+      <div class="code-block"><span class="comment"># Train JEPA, save metrics/params</span>
+<span class="keyword">python</span> <span class="string">JEPA/train.py</span>
 
-<span class="comment"># Generate all visualizations (2-3 min)</span>
-<span class="keyword">python</span> <span class="string">JEPA/test_visualizations.py</span></div>
+<span class="comment"># Generate all visualizations from saved results</span>
+<span class="keyword">python</span> <span class="string">JEPA/visualize.py</span></div>
       <p>Key functions (import from <code>JEPA</code> package):</p>
       <div class="code-block"><span class="keyword">from</span> <span class="string">JEPA</span> <span class="keyword">import</span> (
     <span class="comment"># Environment</span>
@@ -312,7 +297,7 @@
           <ul>
             <li><code>analysis.py</code> — All visualizations</li>
             <li><code>scaffold.py</code> — End-to-end demo</li>
-            <li><code>test_visualizations.py</code> — Generate plots</li>
+            <li><code>train.py</code> / <code>visualize.py</code> — Train + generate plots</li>
             <li><code>images/</code> — Generated outputs</li>
           </ul>
         </div>

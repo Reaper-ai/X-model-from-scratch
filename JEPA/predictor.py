@@ -7,16 +7,18 @@ import torch
 import torch.nn.functional as F
 
 
-def init_predictor_params(latent_dim: int = 32, action_dim: int = 4, hidden_dim: int = 64, seed: int = 0) -> dict:
+def init_predictor_params(latent_dim: int = 32, action_dim: int = 4, hidden_dim: int = 64, seed: int = 0, device: str = 'cpu') -> dict:
     torch.manual_seed(seed)
-    t = lambda x: (torch.randn(x, requires_grad=True) * 0.02).detach().requires_grad_(True)
-
+    
+    def t(shape):
+        return (torch.randn(shape, device=device, requires_grad=True) * 0.02).detach().requires_grad_(True)
+    
     predictor_params = {}
     predictor_params['action_embed_w'] = t([action_dim, latent_dim])
     predictor_params['fc1_w'] = t([hidden_dim, 2 * latent_dim])
     predictor_params['fc2_w'] = t([latent_dim, hidden_dim])
-    predictor_params['fc1_b'] = torch.zeros(hidden_dim, requires_grad=True)
-    predictor_params['fc2_b'] = torch.zeros(latent_dim, requires_grad=True)
+    predictor_params['fc1_b'] = torch.zeros(hidden_dim, device=device, requires_grad=True)
+    predictor_params['fc2_b'] = torch.zeros(latent_dim, device=device, requires_grad=True)
 
     return predictor_params
 
@@ -40,3 +42,8 @@ def predictor_forward(embeddings: torch.Tensor, actions: torch.Tensor, predictor
 def predict_next_embedding(embeddings: torch.Tensor, actions: torch.Tensor, predictor_params: dict) -> torch.Tensor:
     next_z = predictor_forward(embeddings, actions, predictor_params)
     return next_z
+
+
+def move_params_to_device(params: dict, device: str) -> dict:
+    """Move all parameters in dict to specified device."""
+    return {k: v.to(device) for k, v in params.items()}
