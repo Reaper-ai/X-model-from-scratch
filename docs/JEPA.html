@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JEPA World Model — From Scratch</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+  :root {
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+
+  /* Light theme (default) */
+  [data-theme="light"] {
+    --bg: #ffffff;
+    --surface: #fafafa;
+    --surface-alt: #f4f4f5;
+    --border: #e4e4e7;
+    --text: #18181b;
+    --text-muted: #71717a;
+    --accent: #18181b;
+  }
+
+  /* Dark theme */
+  [data-theme="dark"] {
+    --bg: #09090b;
+    --surface: #18181b;
+    --surface-alt: #27272a;
+    --border: #27272a;
+    --text: #fafafa;
+    --text-muted: #a1a1a6;
+    --accent: #fafafa;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    scroll-behavior: smooth;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+
+  .theme-toggle {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 100;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  .theme-toggle:hover { border-color: var(--text); }
+  .theme-toggle svg { width: 20px; height: 20px; stroke: var(--text); fill: none; stroke-width: 2; }
+
+  .article-header {
+    position: relative;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--surface) 0%, var(--surface-alt) 100%);
+    border-bottom: 1px solid var(--border);
+  }
+  .article-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" /></filter><rect width="100" height="100" filter="url(%23noise)" opacity="0.05"/></svg>');
+    opacity: 0.3;
+    animation: drift 20s ease-in-out infinite;
+  }
+  @keyframes drift {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(10px, -10px); }
+  }
+  .header-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    padding: 80px 24px;
+    animation: fadeInUp 0.8s ease-out;
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .header-content .tag {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    border-radius: 999px;
+    display: inline-block;
+    margin-bottom: 16px;
+  }
+  .header-content h1 {
+    font-family: var(--mono);
+    font-size: 48px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .header-content p {
+    color: var(--text-muted);
+    font-size: 18px;
+    margin-top: 16px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .wrap { max-width: 900px; margin: 0 auto; padding: 64px 24px; }
+
+  .article-body {
+    animation: fadeIn 0.6s ease-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .section {
+    margin-bottom: 64px;
+    scroll-margin-top: 80px;
+  }
+  .section-title {
+    font-family: var(--mono);
+    font-size: 14px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0 0 24px;
+    font-weight: 600;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .article-body h2 {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 600;
+    margin: 48px 0 24px;
+    letter-spacing: -0.01em;
+  }
+  .article-body h3 {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 600;
+    margin: 32px 0 16px;
+    color: var(--text);
+  }
+  .article-body p {
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+  .article-body a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+  .article-body a:hover { border-color: var(--accent); }
+  .article-body code {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    background: var(--surface-alt);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .article-body pre {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 24px 0;
+  }
+  .article-body pre code {
+    background: none;
+    padding: 0;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .article-body ul, .article-body ol {
+    margin: 16px 0;
+    padding-left: 24px;
+  }
+  .article-body li { margin-bottom: 8px; }
+
+  .figure {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 32px 0;
+    text-align: center;
+  }
+  .figure img, .figure .gif {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+  }
+  .figure figcaption {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 12px;
+    text-align: center;
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-muted);
+    text-decoration: none;
+    margin-bottom: 32px;
+    transition: color 0.2s;
+  }
+  .back-link:hover { color: var(--text); }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .tag {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    border-radius: 6px;
+  }
+
+  .footer {
+    text-align: center;
+    padding-top: 48px;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .footer a { color: var(--text); text-decoration: none; }
+
+  @media (max-width: 640px) {
+    .header-content h1 { font-size: 36px; }
+    .wrap { padding: 48px 16px; }
+  }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode">
+    <svg id="theme-icon-light" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    <svg id="theme-icon-dark" viewBox="0 0 24 24" style="display:none;"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+  </button>
+
+  <header class="article-header">
+    <div class="header-content">
+      <span class="tag">From Scratch</span>
+      <h1>JEPA World Model</h1>
+      <p>Joint Embedding Predictive Architecture for 2D grid navigation — built from scratch with PyTorch primitives.</p>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <a href="index.html" class="back-link">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+      Back to Models
+    </a>
+
+    <div class="tags">
+      <span class="tag">PyTorch</span>
+      <span class="tag">Self-Supervised</span>
+      <span class="tag">MPC</span>
+      <span class="tag">VICReg</span>
+    </div>
+
+    <article class="article-body">
+      <section class="section">
+        <h2>What is JEPA?</h2>
+        <p>
+          <strong>JEPA (Joint Embedding Predictive Architecture)</strong> is a self-supervised learning architecture introduced by Yann LeCun that follows a fundamentally different philosophy from today's large language models.
+        </p>
+        <p>
+          The core problem with current LLMs and LLM-based models is that they cannot truly predict the consequences of their actions. They operate on token sequences, learning statistical correlations rather than building an internal model of how the world works. They generate the next token based on patterns, but they don't understand <em>cause and effect</em> — what happens if I take this action in this state?
+        </p>
+        <p>
+          JEPA was designed to address this. Instead of predicting raw pixels, text, or video frames directly, JEPA learns to predict in a <strong>latent space</strong> — an abstract representation that captures only the information relevant for decision-making. By operating in this compressed latent dimension, JEPA minimizes computation costs while maintaining the ability to reason about future states. It's the difference between memorizing every frame of a video and understanding the physics that govern how objects move.
+        </p>
+        <p>
+          In this implementation, we apply JEPA to a simple 2D grid world. An agent navigates a 6×6 room, and the model learns the latent dynamics from random exploration. The trained world model is then used for model-predictive control (MPC) — planning in latent space to reach goals.
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>Architecture</h2>
+        <p>
+          The JEPA architecture follows a U-shaped design with four main components:
+        </p>
+        <ul>
+          <li><strong>Online Encoder</strong> — A CNN + FC network that encodes 6×6 grid observations into 16-dimensional latents <code>zₜ</code>.</li>
+          <li><strong>Target Encoder (EMA)</strong> — An exponential moving average copy of the online encoder (τ=0.996) that encodes the next observation <code>oₜ₊₁</code> into <code>zₜ₊₁<sup>target</sup></code>.</li>
+          <li><strong>Predictor</strong> — Takes the current latent <code>zₜ</code> and an action embedding <code>aₜ</code>, predicts the next latent <code>zₜ₊₁</code>.</li>
+          <li><strong>Linear Probe</strong> — Trained on the predictor's output to decode position <code>(x, y)</code> from <code>zₜ₊₁</code>, verifying that predicted latents encode meaningful state.</li>
+        </ul>
+
+        <div class="figure">
+          <img src="images/JEPA/architecture.png" alt="JEPA Architecture Diagram">
+          <figcaption>Figure 1: JEPA architecture — Online encoder (bottom-left), target encoder (bottom-right, EMA updated), predictor (top-center), linear probe (right). Arrows show L-shaped data flow with 90° bends.</figcaption>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Loss Function: JEPA + VICReg</h2>
+        <p>
+          The training objective combines prediction loss with VICReg regularization to prevent representation collapse:
+        </p>
+        <div class="figure">
+          <pre><code>L = ||zₜ₊₁<sup>pred</sup> − zₜ₊₁<sup>target</sup>||²
+    + λ_var · VarianceLoss
+    + λ_cov · CovarianceLoss</code></pre>
+          <figcaption>Equation 1: Full JEPA objective</figcaption>
+        </div>
+        <ul>
+          <li><strong>Prediction Loss</strong> — MSE between predicted and target latents.</li>
+          <li><strong>Variance Loss</strong> — <code>ReLU(γ − std(z))</code> with γ=1.0. Pushes standard deviation of each latent dimension toward 1, preventing collapse to a point.</li>
+          <li><strong>Covariance Loss</strong> — Penalizes off-diagonal covariance terms, decorrelating latent dimensions.</li>
+          <li><strong>Weights</strong> — λ<sub>var</sub>=1.0, λ<sub>cov</sub>=0.04.</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <h2>Training</h2>
+        <p>
+          The model is trained on 512 random transitions collected in a 6×6 grid (4 actions: up, down, left, right). Data is split 70% train / 15% validation / 15% test. Optimization uses Adam (lr=3×10⁻⁴, batch=32). The target encoder is updated via EMA (τ=0.996) each step. Early stopping triggers after 10 validation evaluations without improvement (evaluated every 50 steps).
+        </p>
+
+        <div class="figure">
+          <img class="gif" src="images/JEPA/training_animation.gif" alt="Animated training curves">
+          <figcaption>Figure 2: Training loss and collapse metric over time. Loss decreases while collapse metric (average latent std) rises from ~0.03 to ~1.0, indicating successful escape from collapse.</figcaption>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Evaluation</h2>
+        <h3>Linear Probe</h3>
+        <p>
+          A linear probe trained on the predictor's single-step predictions <code>zₜ₊₁<sup>pred</sup></code> achieves <strong>R² = 0.76</strong> on held-out test data, recovering the agent's <code>(x, y)</code> position from predicted latents. This confirms the model learns a meaningful state representation rather than trivial shortcuts.
+        </p>
+
+        <h3>Multi-step Prediction</h3>
+        <p>
+          Latent rollouts over 5 steps achieve MSE ≈ 11.2 against the target encoder, demonstrating the learned dynamics are consistent over short horizons.
+        </p>
+
+        <h3>MPC Planning</h3>
+        <p>
+          Using random-shooting MPC (64 sequences, horizon=5) in latent space, the planner reaches goals in <strong>70% of episodes</strong> (vs. 10% random baseline), with a mean of 8.3 steps to goal. The model uses the learned latent dynamics to simulate action sequences and pick the one minimizing distance to the encoded goal.
+        </p>
+
+        <div class="figure">
+          <img src="images/JEPA/trajectory_grid.png" alt="Test trajectories grid">
+          <figcaption>Figure 3: Test trajectories — top row: 5 successful episodes (green paths); bottom row: 5 unsuccessful (red paths with X marking termination). Goals marked with red stars, starts with green circles.</figcaption>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Implementation Details</h2>
+        <p>
+          All components are implemented from scratch using PyTorch primitives — no high-level libraries like <code>nn.Sequential</code> or pre-built modules. The codebase is organized into:
+        </p>
+        <ul>
+          <li><code>data_env.py</code> — Environment, dataset generation with chunked collection (OOM-safe), train/val/test split</li>
+          <li><code>model.py</code> — <code>Encoder</code>, <code>TargetEncoder</code>, <code>Predictor</code>, <code>LinearProbe</code> classes + loss functions</li>
+          <li><code>training_eval.py</code> — <code>JEPATrainer</code> with validation logging, early stopping, checkpointing</li>
+          <li><code>main.py</code> — Orchestration entry point</li>
+          <li><code>visualize.py</code> — Architecture diagram, animated training curves, trajectory grid</li>
+        </ul>
+
+        <h3>Key Hyperparameters</h3>
+        <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border);">
+              <th style="text-align:left; padding:8px; font-family:var(--mono);">Parameter</th>
+              <th style="text-align:left; padding:8px; font-family:var(--mono);">Value</th>
+              <th style="text-align:left; padding:8px;">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px; font-family:var(--mono);">Room size</td><td style="padding:8px; font-family:var(--mono);">6×6</td><td style="padding:8px;">Grid dimension</td></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px; font-family:var(--mono);">Latent dim</td><td style="padding:8px; font-family:var(--mono);">16</td><td style="padding:8px;">Embedding size</td></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px; font-family:var(--mono);">Train samples</td><td style="padding:8px; font-family:var(--mono);">512</td><td style="padding:8px;">Random transitions</td></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px; font-family:var(--mono);">Learning rate</td><td style="padding:8px; font-family:var(--mono);">3×10⁻⁴</td><td style="padding:8px;">Adam optimizer</td></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px; font-family:var(--mono);">EMA τ</td><td style="padding:8px; font-family:var(--mono);">0.996</td><td style="padding:8px;">Target encoder decay</td></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px; font-family:var(--mono);">Max steps</td><td style="padding:8px; font-family:var(--mono);">1500</td><td style="padding:8px;">Early stopped at ~750</td></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px; font-family:var(--mono);">MPC sequences</td><td style="padding:8px; font-family:var(--mono);">64</td><td style="padding:8px;">Random shooting</td></tr>
+            <tr><td style="padding:8px; font-family:var(--mono);">MPC horizon</td><td style="padding:8px; font-family:var(--mono);">5</td><td style="padding:8px;">Planning steps</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="section">
+        <h2>Results Summary</h2>
+        <ul>
+          <li><strong>Probe R²</strong>: 0.76 — predicted latents encode position well</li>
+          <li><strong>5-step latent MSE</strong>: 11.2 — dynamics are consistent</li>
+          <li><strong>MPC success rate</strong>: 70% (vs. 10% random)</li>
+          <li><strong>Mean steps to goal</strong>: 8.3</li>
+          <li><strong>Collapse metric</strong>: 0.03 → 1.03 — successful VICReg regularization</li>
+        </ul>
+        <p>
+          The model demonstrates that a self-supervised world model can learn useful latent dynamics from random exploration and use them for goal-directed planning without any reward signals or expert demonstrations.
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>Run It Yourself</h2>
+        <pre><code># Train the model
+python -m jepa.main
+
+# Generate visualizations
+python -m jepa.visualize</code></pre>
+        <p>
+          Outputs are saved to <code>jepa/data/</code> (checkpoints, history, predictions) and <code>docs/images/JEPA/</code> (architecture.png, training_animation.gif, trajectory_grid.png).
+        </p>
+      </section>
+    </article>
+
+    <footer class="footer">
+      <p>Built by <strong>@Reaper-ai</strong> on <a href="https://deep-ml.com" target="_blank">Deep-ML</a></p>
+    </footer>
+  </div>
+
+  <script>
+    function getTheme() {
+      return localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    }
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+      updateIcons(theme);
+    }
+
+    function updateIcons(theme) {
+      const lightIcon = document.getElementById('theme-icon-light');
+      const darkIcon = document.getElementById('theme-icon-dark');
+      if (theme === 'dark') {
+        lightIcon.style.display = 'none';
+        darkIcon.style.display = 'block';
+      } else {
+        lightIcon.style.display = 'block';
+        darkIcon.style.display = 'none';
+      }
+    }
+
+    function toggleTheme() {
+      const current = getTheme();
+      const next = current === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+    }
+
+    function initTheme() {
+      const theme = getTheme();
+      applyTheme(theme);
+    }
+
+    // Listen for system theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (!localStorage.getItem('theme')) {
+        applyTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+
+    initTheme();
+  </script>
+</body>
+</html>
