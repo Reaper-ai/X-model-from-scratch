@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JEPA World Model — X-Model-From-Scratch</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+:root {
+    --bg: #ffffff;
+    --surface: #fafafa;
+    --surface-alt: #f4f4f5;
+    --border: #e4e4e7;
+    --text: #18181b;
+    --text-muted: #71717a;
+    --accent: #18181b;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+  :root.dark {
+    --bg: #09090b;
+    --surface: #18181b;
+    --surface-alt: #27272a;
+    --border: #27272a;
+    --text: #fafafa;
+    --text-muted: #a1a1a6;
+    --accent: #fafafa;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .back-link {
+    position: fixed;
+    top: 24px;
+    left: 24px;
+    z-index: 100;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+  .back-link:hover { border-color: var(--accent); }
+
+  .theme-toggle {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 100;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  .theme-toggle:hover { border-color: var(--text); }
+  .theme-toggle svg { width: 20px; height: 20px; stroke: var(--text); fill: none; stroke-width: 2; }
+
+.hero {
+     position: relative;
+     min-height: 40vh;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     overflow: hidden;
+     background: linear-gradient(135deg, var(--surface) 0%, var(--surface-alt) 100%);
+   }
+   .hero::before {
+     content: '';
+     position: absolute;
+     inset: 0;
+     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" /></filter><rect width="100" height="100" filter="url(%23noise)" opacity="0.05"/></svg>');
+     opacity: 0.3;
+     animation: drift 20s ease-in-out infinite;
+   }
+   @keyframes drift { 0%,100%{transform:translate(0,0)} 50%{transform:translate(10px,-10px)} }
+   .hero-content { position: relative; z-index: 2; text-align: center; animation: fadeInUp 0.8s ease-out; }
+   @keyframes fadeInUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+   .hero h1 { font-family: var(--mono); font-size: 48px; font-weight: 700; margin: 0 0 16px; letter-spacing: -0.02em; line-height: 1.2; }
+   .hero p { color: var(--text-muted); font-size: 18px; max-width: 600px; margin: 0 auto; }
+
+   .wrap { max-width: 1000px; margin: 0 auto; padding: 64px 24px 96px; }
+
+   .section { scroll-margin-top: 100px; margin-bottom: 80px; }
+   .section-title {
+     font-family: var(--mono);
+     font-size: 14px;
+     letter-spacing: 0.1em;
+     text-transform: uppercase;
+     color: var(--text-muted);
+     margin: 0 0 24px;
+     font-weight: 600;
+   }
+   .section h2 { font-size: 28px; margin: 0 0 8px; }
+   .section > p { color: var(--text-muted); margin: 0 0 32px; max-width: 700px; }
+
+   .figure {
+     background: var(--surface);
+     border: 1px solid var(--border);
+     border-radius: 12px;
+     overflow: hidden;
+     margin-bottom: 32px;
+   }
+   .figure-header {
+     padding: 20px 24px;
+     border-bottom: 1px solid var(--border);
+     background: var(--surface-alt);
+   }
+   .figure-title { font-family: var(--mono); font-size: 14px; font-weight: 600; margin: 0; }
+   .figure-caption { color: var(--text-muted); font-size: 13px; margin: 8px 0 0; }
+   .figure img, .figure svg { display: block; max-width: 100%; height: auto; }
+   .figure-content { padding: 0; }
+
+   .gif-wrapper { position: relative; }
+   .gif-wrapper img { display: block; }
+
+   .code-block {
+     background: #1e1e1e;
+     color: #d4d4d4;
+     border-radius: 8px;
+     padding: 20px 24px;
+     overflow-x: auto;
+     font-family: var(--mono);
+     font-size: 13px;
+     line-height: 1.7;
+     margin: 16px 0;
+   }
+   .code-block .comment { color: #6a9955; }
+   .code-block .keyword { color: #c586c0; }
+   .code-block .string { color: #ce9178; }
+   .code-block .function { color: #dcdcaa; }
+   .code-block .number { color: #b5cea8; }
+
+   .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+   @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+   .footer {
+     text-align: center;
+     padding-top: 48px;
+     border-top: 1px solid var(--border);
+     color: var(--text-muted);
+     font-size: 13px;
+   }
+   .footer a { color: var(--text); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <a href="index.html" class="back-link">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    Back to Gallery
+  </a>
+
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode">
+    <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+
+  <section class="hero" id="hero">
+    <div class="hero-content">
+      <h1>JEPA World Model</h1>
+      <p>Action-conditional Joint Embedding Predictive Architecture with VICReg regularization. Pure PyTorch, from scratch.</p>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <section class="section" id="overview">
+      <h2 class="section-title">Overview</h2>
+      <h2>JEPA World Model from Scratch</h2>
+      <p>This implementation builds a complete JEPA (Joint Embedding Predictive Architecture) world model for a 2D grid environment. The model learns to predict future latent states conditioned on actions, using VICReg regularization to prevent representation collapse. Acting is performed by random-shooting Model Predictive Control (MPC) in the learned latent space — no policy network, no decoder, no pixel reconstruction.</p>
+    </section>
+
+    <section class="section" id="architecture">
+      <h2 class="section-title">Architecture</h2>
+      <h2>Model Architecture</h2>
+      <p>The JEPA consists of an online encoder, an EMA target encoder, an action-conditioned predictor, and a VICReg-regularized JEPA loss.</p>
+      <div class="figure">
+        <div class="figure-header">
+          <h3 class="figure-title">Figure 1: JEPA Architecture Diagram</h3>
+          <p class="figure-caption">Observation → Encoder → Latent z. Action → Embed → Concat with z → Predictor → Predicted z'. Next observation → Target Encoder (EMA) → Target z'. JEPA Loss = MSE(pred, target) + Variance(z) + Covariance(z).</p>
+        </div>
+        <div class="figure-content">
+          <img src="./images/architecture.png" alt="JEPA Architecture Diagram" loading="lazy">
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="training">
+      <h2 class="section-title">Training Dynamics</h2>
+      <h2>Loss & Collapse Metric</h2>
+      <p>Animated training curves showing JEPA loss decreasing and collapse metric (mean latent std) rising from near-zero to the target of 1.0, indicating successful VICReg regularization. Validation checks are marked as points; curriculum horizon shifts are annotated with vertical lines.</p>
+      <div class="figure">
+        <div class="figure-header">
+          <h3 class="figure-title">Figure 2: Training Curves (Animated)</h3>
+          <p class="figure-caption">Config: 100 epochs, batch 32, lr=0.1, no early stopping. Horizon curriculum: 5→10→15→20 every 30 epochs (purple dotted lines). Left: JEPA loss (train + val). Right: Collapse metric (mean latent std) targeting γ=1.0.</p>
+        </div>
+        <div class="figure-content gif-wrapper">
+          <img src="./images/training_curves.gif" alt="Training curves animation" loading="lazy">
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="mpc">
+      <h2 class="section-title">MPC Planning</h2>
+      <h2>Agent Trajectories in 2D Room</h2>
+      <p>Random-shooting MPC plans in latent space: sample 64 action sequences, roll out each with the predictor, score by distance to goal embedding, execute first action of best sequence. Green = success, Red = failure.</p>
+      <div class="figure">
+        <div class="figure-header">
+          <h3 class="figure-title">Figure 3: MPC Trajectories</h3>
+          <p class="figure-caption">Top row: 5 successes. Bottom row: 5 failures. Start (green circle), Goal (red star), End (blue X = success, red X = failure) in a 6×6 room. MPC success: 60% (h=5), 90% (h=10), 70% (h=20).</p>
+        </div>
+        <div class="figure-content">
+          <img src="./images/mpc_trajectories.png" alt="MPC trajectories" loading="lazy">
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="probe">
+      <h2 class="section-title">Linear Probe</h2>
+      <h2>Latent → State Recovery</h2>
+      <p>A linear probe trained on frozen encoder outputs recovers the agent's (x, y) position from the latent. Low MAE confirms the encoder captures true state information without a decoder.</p>
+      <div class="figure">
+        <div class="figure-header">
+          <h3 class="figure-title">Figure 4: Probe Accuracy</h3>
+          <p class="figure-caption">Left: Predicted vs true X position. Center: Predicted vs true Y position. Right: Absolute error distribution. Test MAE ≈ 0.37 cells in 6×6 room. Linear probe on frozen encoder confirms latents encode agent position.</p>
+        </div>
+        <div class="figure-content">
+          <img src="./images/probe_accuracy.png" alt="Probe accuracy" loading="lazy">
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="usage">
+      <h2 class="section-title">Usage</h2>
+      <h2>Running the Code</h2>
+      <div class="code-block"><span class="comment"># Train JEPA, save metrics/params (100 epochs, no early stop)</span>
+<span class="keyword">python</span> <span class="string">JEPA/train.py</span>
+
+<span class="comment"># Generate all visualizations from saved results</span>
+<span class="keyword">python</span> <span class="string">JEPA/visualize.py</span></div>
+      <p>Key functions (import from <code>JEPA</code> package):</p>
+      <div class="code-block"><span class="keyword">from</span> <span class="string">JEPA</span> <span class="keyword">import</span> (
+    <span class="comment"># Environment</span>
+    <span class="function">env_reset</span>, <span class="function">env_step</span>,
+    <span class="comment"># Data</span>
+    <span class="function">build_transition_dataset</span>,
+    <span class="comment"># Models</span>
+    <span class="function">init_encoder_params</span>, <span class="function">init_target_encoder</span>,
+    <span class="function">init_predictor_params</span>,
+    <span class="comment"># Training</span>
+    <span class="function">train_jepa</span>,
+    <span class="comment"># Evaluation</span>
+    <span class="function">probe_state_recovery</span>, <span class="function">evaluate_planner</span>,
+    <span class="comment"># Full experiment</span>
+    <span class="function">jepa_world_model_experiment</span>
+)</div>
+    </section>
+
+    <section class="section" id="files">
+      <h2 class="section-title">File Structure</h2>
+      <div class="two-col">
+        <div>
+          <h3>Core Modules</h3>
+          <ul>
+            <li><code>env.py</code> — 2D room environment</li>
+            <li><code>data.py</code> — Transition collection</li>
+            <li><code>encoder.py</code> — Encoder + EMA target</li>
+            <li><code>predictor.py</code> — Action-conditioned dynamics</li>
+            <li><code>losses.py</code> — VICReg + JEPA losses</li>
+            <li><code>training.py</code> — Training loop</li>
+            <li><code>evaluation.py</code> — Rollouts, probes</li>
+            <li><code>planning.py</code> — MPC planning</li>
+            <li><code>experiment.py</code> — Full pipeline</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Analysis & Docs</h3>
+          <ul>
+            <li><code>analysis.py</code> — All visualizations</li>
+            <li><code>train.py</code> / <code>visualize.py</code> — Train + generate plots</li>
+            <li><code>images/</code> — Generated outputs</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>Part of <a href="index.html">X-Model-From-Scratch</a> • Built by <strong>@Reaper-ai</strong> on <a href="https://deep-ml.com" target="_blank">Deep-ML</a></p>
+    </footer>
+  </div>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.classList.toggle('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    }
+    function initTheme() {
+      const saved = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const isDark = saved === 'dark' || (saved === null && prefersDark);
+      if (isDark) document.documentElement.classList.add('dark');
+      else document.documentElement.classList.remove('dark');
+    }
+    initTheme();
+  </script>
+</body>
+</html>
