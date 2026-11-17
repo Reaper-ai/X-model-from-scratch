@@ -1,127 +1,125 @@
-# Neural ODE from Scratch: Lorenz Attractor
+# Neural ODE (Damped Pendulum)
 
-**Scaffolding only** — implement each function step by step.
+A Neural ODE built from scratch: a network that learns a damped pendulum's velocity field purely from noisy state observations, integrated by an adaptive ODE solver. A discrete-time MLP with the identical trunk serves as a fixed-step reference baseline, so the comparison isolates the *time parameterization* — a chained step map vs a learned continuous field — not capacity.
 
-## Overview
-
-This project implements Neural Ordinary Differential Equations (Neural ODEs) for learning the Lorenz attractor dynamics, with comparison against ResNet MLP (derivative matching) and classical numerical integrators.
-
-## System: Lorenz Attractor
+## The Comparison
 
 ```
-dx/dt = σ(y - x)
-dy/dt = x(ρ - z) - y
-dz/dt = xy - βz
+Discrete MLP (fixed step map)              Neural ODE (continuous field)
 
-σ = 10, ρ = 28, β = 8/3
+x_k ──► x_k + MLP(x_k) ──► x_{k+1}         x(t) ──► dx/dt = MLP(x(t)) ──► ODE solver ──► x(t')
+        chained k times for horizon k               integrates to ANY query time
 ```
 
-## Methods to Implement
+- **Discrete MLP**: predicts the state *delta* per fixed Δt = 0.05 s; rollouts chain the map.
+- **Neural ODE**: the same MLP is interpreted as a velocity field and integrated with `dopri5` (adjoint method for training).
 
-| Method | Training Objective | Integration |
-|--------|-------------------|-------------|
-| **ResNet MLP** | `MSE(f_θ(x), dx/dt_true)` | Fixed-step RK4 |
-| **Neural ODE** | `MSE(∫f_θ dt, x_true)` | Adaptive DOPRI5 (adjoint) |
-| **Classical RK45** | None (ground truth) | SciPy RK45 |
-| **Classical DOP853** | None (ground truth) | SciPy DOP853 |
-| **Classical Euler** | None (ground truth) | Fixed-step Euler |
-| **Classical RK4** | None (ground truth) | Fixed-step RK4 |
+## Architecture Overview
 
-## Implementation Order
+Both models: `2 → 64 → 64 → 64 → 64 → 2`, SiLU activations, Kaiming init, 12,802 parameters each, identical seed (42).
 
-Follow the step numbers in each file:
+| Model | Form | Time handling |
+|-------|------|---------------|
+| **DiscreteMLP** | residual: `x_{k+1} = x_k + MLP(x_k)` (zero-init output layer) | fixed Δt steps only |
+| **NeuralODE** | field: `dx/dt = MLP(x)` | any query time via solver |
 
-### 1. `node/data_env.py` — Data Generation
-- [ ] `lorenz_system()` — Ground truth ODE
-- [ ] `generate_trajectories()` — Simulate with scipy.integrate.solve_ivp
-- [ ] `sample_irregular_timepoints()` — Random/Poisson/log sampling
-- [ ] `LorenzDataset` — PyTorch Dataset
-- [ ] `create_dataloaders()` — Train/val/test splits
-- [ ] `save_trajectories()` / `load_trajectories()` — .npz I/O
+The residual form is essential: a direct `x_{k+1} = MLP(x_k)` map is unstable when rolled out (compounding errors, ~50× worse loss). The zero-init output layer means training starts from "do nothing" and grows the correction.
 
-### 2. `node/model.py` — Model Architectures
-- [ ] `ResidualBlock` — x + Linear(ReLU(Linear(x)))
-- [ ] `ResNetMLP` — Time-invariant f_θ(x) → dx/dt
-- [ ] `NeuralODE` — Time-conditioned f_θ(t, x) → dx/dt
-- [ ] `ClassicalIntegrator` — Wrapper for scipy/fixed-step integrators
-- [ ] `vector_field_loss()` / `trajectory_loss()` — MSE losses
-- [ ] `count_parameters()` — Parameter counting
-- [ ] `integrate_neural_ode()` — torchdiffeq integration
-- [ ] `integrate_resnet()` — Fixed-step RK4 integration
+## Data
 
-### 3. `node/training_eval.py` — Training & Evaluation
-- [ ] `EarlyStopping` — Callback
-- [ ] `ResNetTrainer` — Derivative matching training
-- [ ] `NeuralODETrainer` — Trajectory matching with adjoint
-- [ ] `ClassicalEvaluator` — Scipy integrator evaluation
-- [ ] `evaluate_trajectory()` — Single trajectory metrics
-- [ ] `compute_lyapunov_exponent()` — Chaos divergence metric
-- [ ] `evaluate_on_test_set()` — Full test set evaluation
+- **System**: damped pendulum `dθ/dt = ω`, `dω/dt = −(g/L)·sin(θ) − b·ω` (g=9.81, L=1, b=0.1)
+- **Trajectories**: 300 (+ mirrored for symmetry) with random ICs in the training box θ₀ ∈ ±π/2, ω₀ ∈ ±2 (extended experiment: ±π, ±4), dt = 0.05 s, slight measurement noise
+- **Splits** (physics-based labels):
+  - `train` — ICs in the training box, up to 3 periods
+  - `test_A` — unseen ICs, same box, up to 3 periods (in-distribution)
+  - `test_B` — same box, up to 8 periods (time extrapolation)
+  - `test_C` — ICs at 1.5× the box (state extrapolation)
+- **Two views of the same trajectories**:
+  - regular grid → Discrete MLP
+  - irregular (random 50% of time points kept, per-trajectory) → Neural ODE
 
-### 4. `node/main.py` — Orchestration
-- [ ] `setup_device()` — CUDA/MPS/CPU
-- [ ] `setup_models()` — Instantiate all models
-- [ ] `setup_optimizers()` — Adam + ReduceLROnPlateau
-- [ ] `run_data_generation()` — Generate/load data
-- [ ] `run_resnet_training()` — Train ResNet
-- [ ] `run_node_training()` — Train Neural ODE
-- [ ] `run_evaluation()` — Evaluate all methods
-- [ ] `run_visualization()` — Generate figures
-- [ ] `run_full_pipeline()` — End-to-end
-- [ ] `main()` — CLI with argparse
+## Training
 
-### 5. `node/visualize.py` — Visualization
-- [ ] `plot_lorenz_ground_truth()` — 3D + time series
-- [ ] `plot_vector_field_comparison()` — Quiver plots
-- [ ] `plot_3d_trajectories_comparison()` — 3D overlay
-- [ ] `plot_trajectory_timeseries()` — x(t), y(t), z(t)
-- [ ] `plot_error_growth()` — MSE + Lyapunov bars
-- [ ] `plot_loss_curves()` — Training curves
-- [ ] `plot_irregular_sampling_demo()` — Time sampling viz
-- [ ] `plot_method_comparison_table()` — Summary table
-- [ ] `save_all_figures()` — Orchestrates all plots
+| | DiscreteTrainer | TrajectoryTrainer (NODE) |
+|---|---|---|
+| Data | regular grid | irregular timestamps |
+| Loss | one-step + multi-step rollout (0.5/0.5) | observed-state matching over windows (no derivative loss) |
+| Curriculum | window length 15 → 50 over 50 epochs | same, with `time_scale` keeping window time span equal |
+| Optimizer | Adam lr=1e-3, cosine schedule, wd=1e-5 | same |
+| Epochs | 200 (early stop patience 20) | 200 (adjoint, `rk4` adjoint method) |
 
-## Quick Start
+Both trainers sample training windows only from trajectories long enough to contain them.
+
+## Evaluation
+
+Two protocols (`run_evaluation` in `main.py`):
+
+- **Protocol R (regular grid)** — both models queried on the dense regular grid (`evaluate_all_tests` on the regular loaders).
+- **Protocol I (irregular queries)** — both models queried at the same irregular timestamps (`evaluate_queries_on_loader`); the MLP rolls on its own grid and is linearly interpolated, the ODE integrates natively.
+
+> Note: never evaluate an irregular-trained model by integrating over a regular grid while comparing against irregularly-timed states — the time mismatch produces wildly wrong numbers. Use the query-based protocol instead.
+
+Reference results (200 epochs, main config):
+
+| Model | test_A | test_B | test_C |
+|-------|--------|--------|--------|
+| Discrete MLP | 3.9e-2 | 4.8e-2 | 0.91 |
+| Neural ODE | **1.2e-2** | **1.2e-2** | 0.86 |
+
+## Usage
 
 ```bash
-# Install deps
-uv pip install torchdiffeq scipy matplotlib seaborn tqdm
+# Full pipeline: data -> train both -> dual-protocol eval -> 5 figures (~2.2 h)
+python main.py full-pipeline
 
-# Run full pipeline (after implementing)
-python -m node.main full-pipeline
+# Quick smoke test
+python main.py full-pipeline --epochs 2
 
-# Or individual steps
-python -m node.main generate-data
-python -m node.main train-resnet
-python -m node.main train-node
-python -m node.main evaluate
-python -m node.main visualize
+# Print Protocol R / Protocol I comparison tables from metrics.json
+python main.py summarize
+
+# Regenerate figures only (loads saved models)
+python main.py visualize
+
+# Extended-range variant: train IC box θ0 ∈ ±π, ω0 ∈ ±4 (test at 1.5x)
+python extended_experiment.py
 ```
 
-## Outputs
+CLI options: `--epochs`, `--irregular-frac`, `--irregular-strategy`, `--n-trajectories`, `--seed`, `--regenerate-data`, and more (see `main.py`).
 
-- **Models**: `node/data/resnet_model.pt`, `node/data/node_model.pt`
-- **Metrics**: `node/data/metrics.json`
-- **Figures**: `docs/images/node/`
-  - `lorenz_ground_truth.png`
-  - `vector_field_comparison.png`
-  - `trajectories_3d_comparison.png`
-  - `trajectory_timeseries.png`
-  - `error_growth_log.png`
-  - `loss_curves.png`
-  - `irregular_sampling_demo.png`
-  - `method_comparison_table.png`
+## Output Files
 
-## Key Concepts to Implement
+### `node/data/`
+- `pendulum_trajectories.npz` — main dataset (variable-length, 4-way labels)
+- `discrete_mlp_model.pt` / `node_model.pt` — trained weights
+- `metrics.json` — training histories + dual-protocol evaluation
+- `extended_trajectories.npz`, `extended_metrics.json` — extended-range experiment
+- `extended/` — extended-experiment checkpoints
 
-1. **Derivative matching** (ResNet): Direct MSE on `f_θ(x)` vs true `dx/dt`
-2. **Trajectory matching** (Neural ODE): Integrate `f_θ` then MSE on states
-3. **Adjoint method**: `torchdiffeq.odeint_adjoint` for memory-efficient gradients
-4. **Irregular time sampling**: Neural ODE handles arbitrary `t`; ResNet needs regular grid
-5. **Lyapunov exponent**: Quantifies chaos preservation (true λ ≈ 0.9)
+### `docs/images/node/`
+- `phase_portrait.png` — true vs each model's orbit (1×3 panels)
+- `vector_field.png` — true field vs learned fields (MLP's implied field included)
+- `timeseries_seen_unseen.png` — seen/unseen split with NODE training-sample markers
+- `error_growth.png` — rollout error vs time (log scale)
+- `ic_sensitivity.png` — trajectory MSE vs initial condition sweeps
+- `extended_vector_field.png`, `extended_ic_sensitivity.png` — extended-range variants
 
-## References
+## Key Hyperparameters
 
-- Chen et al., "Neural Ordinary Differential Equations" (NeurIPS 2018)
-- torchdiffeq: https://github.com/rtqichen/torchdiffeq
-- Lorenz, "Deterministic Nonperiodic Flow" (1963)
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| `hidden_dim` | 64 | Hidden width (4 layers) |
+| `dt` | 0.05 | Sampling time step |
+| `n_trajectories` | 300 | Base trajectories (+ symmetric mirrors) |
+| `k_periods_train` | 3 | Max training horizon in periods |
+| `test_B_max_periods` | 8 | Long-horizon test length |
+| `test_C_ic_range_factor` | 1.5 | Extrapolation IC range multiplier |
+| `mlp_form` | `residual` | `x + MLP(x)` map (vs `direct`) |
+| `one_step_weight` / `multi_step_weight` | 0.5 / 0.5 | Discrete loss mix |
+| `irregular_frac` | 0.5 | Fraction of points kept for the NODE view |
+| `use_derivative_loss` | False | Fair supervision (states only) |
+| `integration_method` | `dopri5` | ODE solver |
+| `use_adjoint` | True | Adjoint backprop through the solver |
+| `window_size` / `window_size_start` | 50 / 15 | Rollout curriculum |
+| `n_windows_per_batch` | 64 | Windows sampled per batch |
+| `curriculum_epochs` | 50 | Ramp-up epochs for window length |
