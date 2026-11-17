@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>From Scratch Models — Deep-ML</title>
+  <title>From Scratch Models</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
   :root {
@@ -261,7 +261,7 @@
 
     <div class="card-grid">
       <!-- JEPA Card -->
-      <a href="JEPA.html" class="model-card">
+      <a href="jepa.html" class="model-card">
         <div class="card-icon">
           <svg viewBox="0 0 24 24">
             <rect x="3" y="3" width="6" height="6" rx="1"/>
@@ -283,21 +283,29 @@
         <svg class="card-arrow" viewBox="0 0 24 24" width="20" height="20"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </a>
 
-      <!-- Placeholder cards for future models -->
-      <a href="#" class="model-card" style="opacity: 0.5; pointer-events: none;">
+      <!-- Neural ODE Card -->
+      <a href="node.html" class="model-card">
         <div class="card-icon">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>
+          <svg viewBox="0 0 24 24">
+            <path d="M4 17a8 8 0 1 1 8 4"/>
+            <path d="M12 17l3-2M12 17l3 2"/>
+            <circle cx="12" cy="9" r="1.5"/>
+          </svg>
         </div>
         <div class="card-content">
-          <h3 class="card-title">Coming Soon</h3>
-          <p class="card-description">More from-scratch implementations in progress...</p>
+          <h3 class="card-title">Neural ODEs</h3>
+          <p class="card-description">A network that learns a pendulum's law of motion — a velocity field integrated by an ODE solver — from noisy, irregular observations. Adjoint training, any-time queries, extended-range study.</p>
           <div class="card-tags">
-            <span class="tag">Planned</span>
+            <span class="tag">PyTorch</span>
+            <span class="tag">Neural ODE</span>
+            <span class="tag">Adjoint</span>
+            <span class="tag">Vector Fields</span>
           </div>
         </div>
         <svg class="card-arrow" viewBox="0 0 24 24" width="20" height="20"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </a>
 
+      <!-- Placeholder card for future models -->
       <a href="#" class="model-card" style="opacity: 0.5; pointer-events: none;">
         <div class="card-icon">
           <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5"/></svg>
@@ -314,7 +322,7 @@
     </div>
 
     <footer class="footer">
-      <p>Built by <strong>@Reaper-ai</strong> on <a href="https://deep-ml.com" target="_blank">Deep-ML</a></p>
+      <p>Built by <strong>@Reaper-ai</strong></p>
     </footer>
   </div>
 

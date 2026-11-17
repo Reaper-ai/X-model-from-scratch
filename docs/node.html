@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Neural ODEs — From Scratch</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+  :root {
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+
+  /* Light theme (default) */
+  [data-theme="light"] {
+    --bg: #ffffff;
+    --surface: #fafafa;
+    --surface-alt: #f4f4f5;
+    --border: #e4e4e7;
+    --text: #18181b;
+    --text-muted: #71717a;
+    --accent: #18181b;
+  }
+
+  /* Dark theme */
+  [data-theme="dark"] {
+    --bg: #09090b;
+    --surface: #18181b;
+    --surface-alt: #27272a;
+    --border: #27272a;
+    --text: #fafafa;
+    --text-muted: #a1a1a6;
+    --accent: #fafafa;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    scroll-behavior: smooth;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+
+  .theme-toggle {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 100;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  .theme-toggle:hover { border-color: var(--text); }
+  .theme-toggle svg { width: 20px; height: 20px; stroke: var(--text); fill: none; stroke-width: 2; }
+
+  .article-header {
+    position: relative;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--surface) 0%, var(--surface-alt) 100%);
+    border-bottom: 1px solid var(--border);
+  }
+  .article-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" /></filter><rect width="100" height="100" filter="url(%23noise)" opacity="0.05"/></svg>');
+    opacity: 0.3;
+    animation: drift 20s ease-in-out infinite;
+  }
+  @keyframes drift {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(10px, -10px); }
+  }
+  .header-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    padding: 80px 24px;
+    animation: fadeInUp 0.8s ease-out;
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .header-content .tag {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    border-radius: 999px;
+    display: inline-block;
+    margin-bottom: 16px;
+  }
+  .header-content h1 {
+    font-family: var(--mono);
+    font-size: 48px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .header-content p {
+    color: var(--text-muted);
+    font-size: 18px;
+    margin-top: 16px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .wrap { max-width: 900px; margin: 0 auto; padding: 64px 24px; }
+
+  .article-body {
+    animation: fadeIn 0.6s ease-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .section {
+    margin-bottom: 64px;
+    scroll-margin-top: 80px;
+  }
+  .section-title {
+    font-family: var(--mono);
+    font-size: 14px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0 0 24px;
+    font-weight: 600;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .article-body h2 {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 600;
+    margin: 48px 0 24px;
+    letter-spacing: -0.01em;
+  }
+  .article-body h3 {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 600;
+    margin: 32px 0 16px;
+    color: var(--text);
+  }
+  .article-body p {
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+  .article-body a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+  .article-body a:hover { border-color: var(--accent); }
+  .article-body code {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    background: var(--surface-alt);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .article-body pre {
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 24px 0;
+  }
+  .article-body pre code {
+    background: none;
+    padding: 0;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .article-body ul, .article-body ol {
+    margin: 16px 0;
+    padding-left: 24px;
+  }
+  .article-body li { margin-bottom: 8px; }
+
+  .figure {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 32px 0;
+    text-align: center;
+  }
+  .figure img, .figure .gif {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+  }
+  .figure figcaption {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 12px;
+    text-align: center;
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text-muted);
+    text-decoration: none;
+    margin-bottom: 32px;
+    transition: color 0.2s;
+  }
+  .back-link:hover { color: var(--text); }
+
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 24px;
+  }
+  .tag {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    border-radius: 6px;
+  }
+
+  .footer {
+    text-align: center;
+    padding-top: 48px;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .footer a { color: var(--text); text-decoration: none; }
+
+  @media (max-width: 640px) {
+    .header-content h1 { font-size: 36px; }
+    .wrap { padding: 48px 16px; }
+  }
+  </style>
+</head>
+<body>
+  <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode" aria-label="Toggle dark mode">
+    <svg id="theme-icon-light" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    <svg id="theme-icon-dark" viewBox="0 0 24 24" style="display:none;"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+  </button>
+
+  <header class="article-header">
+    <div class="header-content">
+      <span class="tag">From Scratch</span>
+      <h1>Neural ODEs</h1>
+      <p>A neural network that doesn't predict the answer — it learns the law of motion and integrates it. Built from scratch, trained on nothing but noisy observations of a pendulum.</p>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <a href="index.html" class="back-link">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+      Back to Models
+    </a>
+
+    <div class="tags">
+      <span class="tag">PyTorch</span>
+      <span class="tag">Neural ODE</span>
+      <span class="tag">Adjoint Method</span>
+      <span class="tag">Vector Fields</span>
+    </div>
+
+    <article class="article-body">
+      <section class="section">
+        <h2>What's a Neural ODE?</h2>
+        <p>
+          Almost every neural network you meet works like a snapshot machine: some input goes in, an output comes out, one shot. <code>y = f(x)</code>. That's great for images and tokens. But a lot of the world doesn't work in snapshots — it <em>unfolds</em>. A pendulum doesn't jump from position to position; it flows through them, continuously, at a speed that depends on where it currently is.
+        </p>
+        <p>
+          A <strong>Neural ODE</strong> takes that seriously. Instead of the network <em>being</em> the answer, the network is the <em>rule of change</em>:
+        </p>
+        <div class="figure">
+          <pre><code>dx/dt = f(x, t)        ← the network
+
+x(t)  = ODE solver(f, x₀, t)   ← the answer</code></pre>
+          <figcaption>The network defines a velocity field; an ODE solver turns it into trajectories.</figcaption>
+        </div>
+        <p>
+          The network outputs <em>how fast things change right now</em>, at every point of the state space. To actually get somewhere, you hand it to an ODE solver, which takes lots of tiny steps along that field and lands wherever you asked. You never trained "the future" — you trained the physics-like rule that generates every future.
+        </p>
+        <p>
+          There's a neat connection hiding here. A ResNet layer is <code>x_{k+1} = x_k + f(x_k)</code> — and that is <em>literally</em> one Euler step of an ODE. The Neural ODE idea (Chen et al., 2018) is basically: stop pretending the step has to be discrete. Make time continuous, let the solver decide how big each step should be, and the network becomes a genuine dynamical system.
+        </p>
+        <p>
+          One more framing that helps: a fixed-step network is like a stack of video frames — a valid prediction every 0.05 s and nothing in between. A Neural ODE is like the physics engine behind the video. The frames come out of it at any frame rate you want.
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>The Test Bench: A Pendulum</h2>
+        <p>
+          The pendulum isn't special. It's just the equation we picked to play against — a two-dimensional ODE with a nice mix of nonlinearity (<code>sin θ</code>) and damping:
+        </p>
+        <div class="figure">
+          <pre><code>dθ/dt = ω
+dω/dt = −(g/L)·sin(θ) − b·ω</code></pre>
+          <figcaption>The damped pendulum. Our ground truth — not our model.</figcaption>
+        </div>
+        <p>
+          The whole point: <strong>the network never sees this equation</strong>. We integrate it numerically to make training data — 300 trajectories with random starting angles (θ₀ ∈ ±π/2) and speeds (ω₀ ∈ ±2), sampled every 0.05 s, with a bit of measurement noise sprinkled on top, lengths up to 3 periods (plus some 8-period ones for long-horizon tests). The model gets nothing but those noisy <code>(θ, ω)</code> observations and their timestamps. If it learns anything about motion, it learned it from data alone.
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>Training the Field</h2>
+        <p>
+          The network inside is small: 2 → 64 → 64 → 64 → 64 → 2 with SiLU activations — 12,802 parameters. Its output is interpreted as <code>(dθ/dt, dω/dt)</code>.
+        </p>
+        <p>
+          Training looks like this: sample a short window of observed states, integrate the network's field across that window with an adaptive solver (<code>dopri5</code>), and penalize the mismatch against the observed states. No access to the true derivatives — just "your trajectory should match what was recorded". The window length ramps up over training, so the model first learns to be right locally, then to stay right while rolling forward.
+        </p>
+        <p>
+          Backpropagating through an ODE solver sounds terrifying — the solver might take thousands of steps. The <strong>adjoint method</strong> makes it practical: instead of storing every intermediate state, it integrates the gradients <em>backwards</em> through the same solver. Memory stays constant no matter how many solver steps happen; you pay in compute instead. That trade is the standard deal with Neural ODEs.
+        </p>
+        <p>
+          And here's the detail that exercises the ODE's superpower: the training timestamps are <strong>irregular</strong>. Each trajectory keeps only about half of its time points, chosen at random, so the gaps between observations are uneven. Real measurements are never perfectly even — sensors skip, drop, jitter — and a Neural ODE doesn't care, because integrating across any gap is exactly what a solver does. A fixed-step network, by contrast, has to be rebuilt for every sampling pattern. (For reference, we also trained a plain MLP as a fixed-step map — same trunk, same seed — to see what the ODE actually buys.)
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>What It Learned</h2>
+        <p>
+          After 200 epochs, the network produces full trajectories from a starting state alone. Measured against the noise-free truth:
+        </p>
+        <div class="figure">
+          <table style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border);">
+                <th style="text-align:left; padding:8px; font-family:var(--mono);">Model</th>
+                <th style="text-align:left; padding:8px; font-family:var(--mono);">Unseen starts</th>
+                <th style="text-align:left; padding:8px; font-family:var(--mono);">Longer rollouts</th>
+                <th style="text-align:left; padding:8px; font-family:var(--mono);">Bigger starts</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px; font-family:var(--mono);">Neural ODE</td><td style="padding:8px; font-family:var(--mono);"><strong>1.2×10⁻²</strong></td><td style="padding:8px; font-family:var(--mono);"><strong>1.2×10⁻²</strong></td><td style="padding:8px; font-family:var(--mono);">0.86</td></tr>
+              <tr><td style="padding:8px; font-family:var(--mono);">Fixed-step MLP (reference)</td><td style="padding:8px; font-family:var(--mono);">3.9×10⁻²</td><td style="padding:8px; font-family:var(--mono);">4.8×10⁻²</td><td style="padding:8px; font-family:var(--mono);">0.91</td></tr>
+            </tbody>
+          </table>
+          <figcaption>Trajectory MSE after full-length rollouts. Lower is better. "Bigger starts" = starting points 1.5× outside everything either model ever saw.</figcaption>
+        </div>
+        <p>
+          The ODE lands about <strong>3–4× lower error</strong> than the fixed-step reference on states it wasn't trained on — while having seen half the data points, at irregular times. The intuition for why: the MLP's tiny one-step mistakes get chained together hundreds of times, and they compound (its predicted orbits visibly drift). The ODE's errors come from one smooth field, so there's far less machinery for error to build up in.
+        </p>
+
+        <div class="figure">
+          <img src="images/node/phase_portrait.png" alt="Phase portrait comparison">
+          <figcaption>Figure 1: Orbits in phase space on an unseen start. Black is the true trajectory, green is the Neural ODE's rollout — it tracks the truth and closes the loop.</figcaption>
+        </div>
+
+        <div class="figure">
+          <img src="images/node/timeseries_seen_unseen.png" alt="Time series, seen vs unseen region">
+          <figcaption>Figure 2: Time series on a longer-than-training rollout. Left of the dotted line is the training horizon; right of it is pure extrapolation. Green dots mark every timestamp the ODE was trained on — notice how sparse and uneven they are.</figcaption>
+        </div>
+
+        <div class="figure">
+          <img src="images/node/error_growth.png" alt="Error growth over time">
+          <figcaption>Figure 3: Error vs rollout length (log scale). Thin lines are individual trajectories, thick lines are averages. The ODE stays accurate for longer before the system's sensitivity takes over.</figcaption>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Looking Inside: The Learned Field</h2>
+        <p>
+          The best part of a Neural ODE is that you can open it up. The network <em>is</em> a velocity field, so we can evaluate it anywhere in the state space and draw what it believes:
+        </p>
+        <div class="figure">
+          <img src="images/node/vector_field.png" alt="Vector field comparison">
+          <figcaption>Figure 4: The true pendulum field vs the field the network learned. Green box = the region it was trained on. Inside the box they agree; outside, the network invents its own physics.</figcaption>
+        </div>
+        <p>
+          That picture is the whole story of a Neural ODE in one glance: the network didn't memorize trajectories, it recovered a <em>rule</em> — arrows pointing the right way everywhere it was shown data. And also the honest limit of the idea: where there was no data, the arrows say whatever the network's priors say. There's no free physics.
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>Any Time You Want</h2>
+        <p>
+          Because the model is continuous, asking for the state at <code>t = 0.137 s</code> is not a special case — the solver just stops there. We tested this by querying both models at irregular (unevenly spaced) timestamps. The fixed-step network can only produce states on its own 0.05 s grid and gets linearly interpolated in between; the ODE integrates directly to each query time.
+        </p>
+        <div class="figure">
+          <table style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border);">
+                <th style="text-align:left; padding:8px; font-family:var(--mono);">Model</th>
+                <th style="text-align:left; padding:8px; font-family:var(--mono);">Unseen starts</th>
+                <th style="text-align:left; padding:8px; font-family:var(--mono);">Longer rollouts</th>
+                <th style="text-align:left; padding:8px; font-family:var(--mono);">Bigger starts</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px; font-family:var(--mono);">Neural ODE (native)</td><td style="padding:8px; font-family:var(--mono);"><strong>1.2×10⁻²</strong></td><td style="padding:8px; font-family:var(--mono);"><strong>1.2×10⁻²</strong></td><td style="padding:8px; font-family:var(--mono);">0.86</td></tr>
+              <tr><td style="padding:8px; font-family:var(--mono);">Fixed-step MLP (interpolated)</td><td style="padding:8px; font-family:var(--mono);">4.0×10⁻²</td><td style="padding:8px; font-family:var(--mono);">4.7×10⁻²</td><td style="padding:8px; font-family:var(--mono);">0.92</td></tr>
+            </tbody>
+          </table>
+          <figcaption>Same irregular query times for both models. The ODE answers natively; the gap is structural.</figcaption>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Where the Field Ends</h2>
+        <p>
+          Figure 4 already hints at the boundary: the field is only honest inside the green box. So we pushed the box. A second full training run with starting angles covering the entire swing (θ₀ ∈ ±π instead of ±π/2) and speeds up to ±4 — everything else identical, extrapolation tests moved to 1.5× of the new box.
+        </p>
+        <div class="figure">
+          <img src="images/node/extended_ic_sensitivity.png" alt="Extended-range IC sensitivity">
+          <figcaption>Figure 5: Error vs starting condition with the bigger training range. Green = the new training box; red = beyond it. The valley of good predictions follows the data, not the architecture.</figcaption>
+        </div>
+        <div class="figure">
+          <img src="images/node/extended_vector_field.png" alt="Extended-range vector fields">
+          <figcaption>Figure 6: Learned fields with the extended range. The trustworthy region simply grew to fill the new green box.</figcaption>
+        </div>
+        <p>
+          The cliff where predictions fall apart isn't a property of the model class — it's a property of the data you fed it. Widen the data, the cliff moves. That's worth remembering every time someone (including future-you) is impressed by a learned model's "generalization": check where the green box was.
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>What Neural ODEs Buy You</h2>
+        <ul>
+          <li><strong>A rule, not a table</strong> — one field generates every trajectory from every starting point, instead of a separate chained map per time step.</li>
+          <li><strong>Any query time</strong> — the solver stops wherever you ask; no retraining or interpolation hacks for new sampling rates.</li>
+          <li><strong>Irregular data, natively</strong> — uneven observation gaps are just integration gaps. Trained here on 50% of the points, unevenly spaced, and still came out ahead.</li>
+          <li><strong>Constant-memory gradients</strong> — the adjoint method backpropagates through arbitrarily many solver steps without storing them.</li>
+          <li><strong>Honest boundaries</strong> — the learned field shows you exactly where its knowledge ends (Figure 4), which is more than most models admit.</li>
+        </ul>
+        <p>
+          The trade-offs are real: training is slow (the adjoint's compute bill — about 2.2 hours here vs seconds for the fixed-step baseline), you inherit solver accuracy questions, and sharp jumps can force tiny solver steps. Continuous-depth models are a tool for problems that <em>are</em> continuous — like this one.
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>Run It Yourself</h2>
+        <pre><code># Data -> train the ODE -> evaluate -> figures (~2.2 h)
+cd node
+python main.py full-pipeline
+python main.py summarize           # comparison tables
+
+# Extended-range variant (train on the full swing)
+python extended_experiment.py</code></pre>
+        <p>
+          Outputs land in <code>node/data/</code> (models, metrics) and <code>docs/images/node/</code> (figures). The extended experiment writes its own files (<code>extended_*.png</code>, <code>data/extended/</code>) so the two experiments never overwrite each other.
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>Implementation Details</h2>
+        <p>
+          Everything is built with plain PyTorch primitives. The codebase lives in <code>node/</code>:
+        </p>
+        <ul>
+          <li><code>data_env.py</code> — trajectory generation, irregular re-sampling of the same trajectories, dataset/dataloader classes</li>
+          <li><code>model.py</code> — <code>NeuralODE</code> with the adjoint integrator, plus the <code>DiscreteMLP</code> reference baseline</li>
+          <li><code>train.py</code> — both trainers (windowed rollout training with a length curriculum)</li>
+          <li><code>evaluate.py</code> — dual-protocol evaluation and arbitrary-time queries</li>
+          <li><code>main.py</code> — orchestration + <code>summarize</code> command</li>
+          <li><code>extended_experiment.py</code> — the wider-range variant</li>
+          <li><code>viz/</code> — all figures above, one module per figure</li>
+        </ul>
+
+        <h3>Key Hyperparameters</h3>
+        <table style="width:100%; border-collapse:collapse; margin:16px 0;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border);">
+              <th style="text-align:left; padding:8px; font-family:var(--mono);">Parameter</th>
+              <th style="text-align:left; padding:8px; font-family:var(--mono);">Value</th>
+              <th style="text-align:left; padding:8px;">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px; font-family:var(--mono);">Network</td><td style="padding:8px; font-family:var(--mono);">2→64→64→64→64→2</td><td style="padding:8px;">The field f(x); 12,802 params</td></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px; font-family:var(--mono);">Time step Δt</td><td style="padding:8px; font-family:var(--mono);">0.05 s</td><td style="padding:8px;">Sampling rate of the data</td></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px; font-family:var(--mono);">Trajectories</td><td style="padding:8px; font-family:var(--mono);">300 (+ mirrored)</td><td style="padding:8px;">Random ICs, variable lengths</td></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px; font-family:var(--mono);">Train IC range</td><td style="padding:8px; font-family:var(--mono);">θ ±π/2, ω ±2</td><td style="padding:8px;">±π, ±4 in the extended experiment</td></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px; font-family:var(--mono);">Epochs</td><td style="padding:8px; font-family:var(--mono);">200</td><td style="padding:8px;">Adam lr=10⁻³, cosine schedule</td></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px; font-family:var(--mono);">ODE solver</td><td style="padding:8px; font-family:var(--mono);">dopri5 + adjoint</td><td style="padding:8px;">Training and evaluation</td></tr>
+            <tr><td style="padding:8px; font-family:var(--mono);">Irregular sampling</td><td style="padding:8px; font-family:var(--mono);">50% of points</td><td style="padding:8px;">What the ODE trains on</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </article>
+
+    <footer class="footer">
+      <p>Built by <strong>@Reaper-ai</strong></p>
+    </footer>
+  </div>
+
+  <script>
+    function getTheme() {
+      return localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    }
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+      updateIcons(theme);
+    }
+
+    function updateIcons(theme) {
+      const lightIcon = document.getElementById('theme-icon-light');
+      const darkIcon = document.getElementById('theme-icon-dark');
+      if (theme === 'dark') {
+        lightIcon.style.display = 'none';
+        darkIcon.style.display = 'block';
+      } else {
+        lightIcon.style.display = 'block';
+        darkIcon.style.display = 'none';
+      }
+    }
+
+    function toggleTheme() {
+      const current = getTheme();
+      const next = current === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+    }
+
+    function initTheme() {
+      const theme = getTheme();
+      applyTheme(theme);
+    }
+
+    // Listen for system theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (!localStorage.getItem('theme')) {
+        applyTheme(e.matches ? 'dark' : 'light');
+      }
+    });
+
+    initTheme();
+  </script>
+</body>
+</html>
